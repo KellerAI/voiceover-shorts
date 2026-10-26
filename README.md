@@ -77,6 +77,13 @@ The plugin ships one skill, `skills/shorts-studio/`, which triggers on intent an
 | `bin/` | No | It would block claude.ai and Cowork installs ([manifest reference](https://code.claude.com/docs/en/plugins/manifest-reference.md)). |
 | MCP servers | No | None needed. |
 
+## Narration input
+
+This plugin does not generate voice.
+It needs a WAV plus a matching `<name>.words.json` (schema: `tests/fixtures/r2-15s.words.json`).
+A separate, optional plugin, `voiceover-shorts-tts`, can produce both from text through a third-party text-to-speech API.
+It lives on this repository's `tts-addon` branch and is not part of this plugin.
+
 ## Evals
 
 The `evals/` directory holds four skill eval cases. Run them without publishing:
