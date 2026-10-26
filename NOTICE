@@ -1,0 +1,34 @@
+voiceover-shorts
+Copyright (c) 2026 KellerAI
+
+This product uses the following third-party components. Each remains under
+its own license, as stated below; the KellerAI license does not apply to them.
+
+-------------------------------------------------------------------------------
+GSAP (GreenSock Animation Platform) 3.14.2
+-------------------------------------------------------------------------------
+Vendored at kit/vendor/gsap.min.js, redistributed unmodified under the
+GSAP Standard License (https://gsap.com/standard-license).
+Copyright 2025, GreenSock. All rights reserved.
+The file's original license header is kept intact.
+
+-------------------------------------------------------------------------------
+Comic Shanns (kit/fonts/)
+-------------------------------------------------------------------------------
+License: MIT License (see kit/fonts/LICENSE-ComicShanns.txt)
+Copyright (c) 2018 Shannon Miwa
+Copyright (c) 2023 Jesus Gonzalez
+Copyright (c) 2023 Rodrigo Batista de Moraes
+
+-------------------------------------------------------------------------------
+Lilita One (kit/fonts/)
+-------------------------------------------------------------------------------
+License: SIL Open Font License, Version 1.1 (see kit/fonts/OFL-LilitaOne.txt)
+Copyright (c) 2011 Juan Montoreano (juan@remolacha.biz),
+with Reserved Font Name Lilita
+
+-------------------------------------------------------------------------------
+Virgil (kit/fonts/)
+-------------------------------------------------------------------------------
+License: SIL Open Font License, Version 1.1 (see kit/fonts/OFL-Virgil.txt)
+Copyright (c) 2021 - Present, Ellinor Rapp, with Reserved Font Name Virgil.

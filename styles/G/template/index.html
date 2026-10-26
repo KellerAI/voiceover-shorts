@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style G: editorial print, __G_TITLE__</title>
+<!--
+  Style G template (canonical source: the reference lookdev). styles/G/build.py fills the
+  __G_*__ placeholders: the page plan (window.__G) and the composition length in every
+  data-duration. Do not edit an instantiated copy by hand; rebuild it.
+  D4: the canonical look's three unlicensed ransom-note faces are replaced by the bundled
+  OFL faces (Comic Shanns, Virgil, Lilita One) loaded from assets/fonts/.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Comic"; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Virgil"; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+@font-face { font-family: "GDidot"; src: local("Didot"), local("Didot-Regular"); font-weight: 400; }
+@font-face { font-family: "GDidot"; src: local("Didot-Bold"), local("Didot Bold"); font-weight: 700; }
+@font-face { font-family: "GDidot"; src: local("Didot-Italic"), local("Didot Italic"); font-style: italic; }
+@font-face { font-family: "GBodoni"; src: local("BodoniSvtyTwoITCTT-Book"), local("Bodoni 72 Book"); }
+@font-face { font-family: "GBodoni"; src: local("BodoniSvtyTwoITCTT-BookIta"), local("Bodoni 72 Book Italic"); font-style: italic; }
+@font-face { font-family: "GGrot"; src: local("Futura-Bold"), local("Futura Bold"); font-weight: 700; }
+@font-face { font-family: "GGrot"; src: local("Futura-Medium"), local("Futura Medium"); font-weight: 500; }
+@font-face { font-family: "GMono"; src: local("CourierNewPS-BoldMT"), local("Courier New Bold"); }
+@font-face { font-family: "BPapyrus"; src: local("Papyrus"), local("Papyrus-Condensed"); }
+@font-face { font-family: "BHerc"; src: local("Herculanum"); }
+@font-face { font-family: "BImpact"; src: local("Impact"); }
+@font-face { font-family: "BCopper"; src: local("Copperplate-Bold"), local("Copperplate Bold"); }
+@font-face { font-family: "BTypew"; src: local("AmericanTypewriter-Bold"), local("American Typewriter Bold"); }
+
+:root { --paper:#efe7d6; --paper2:#e6dcc6; --ink:#17151a; --blue:#4da6ff; --orange:#ff7a18; --purple:#7a4dff; }
+html,body { margin:0; width:1080px; height:1920px; overflow:hidden; background:var(--paper); }
+#root { position:relative; width:1080px; height:1920px; overflow:hidden; background:var(--paper); color:var(--ink); }
+.abs { position:absolute; }
+.page { position:absolute; inset:0; background:var(--paper); }
+.mis { text-shadow: 7px 5px 0 rgba(77,166,255,.78), -4px -3px 0 rgba(255,122,24,.72); }
+.mis-o { color:var(--orange); text-shadow: 6px 4px 0 rgba(77,166,255,.75); }
+.halftone { background-image: radial-gradient(circle, currentColor 38%, transparent 41%); background-size: 18px 18px; }
+.kicker { font-family:GGrot; font-weight:500; letter-spacing:.18em; text-transform:uppercase; font-size:44px; }
+.mono { font-family:GMono; }
+.rule { position:absolute; height:4px; background:var(--ink); transform-origin:0 50%; }
+.thin { height:2px; }
+#mast { z-index:20; left:64px; right:64px; top:72px; height:120px; }
+#mastTitle { font-family:GDidot; font-weight:700; font-size:76px; letter-spacing:-.01em; top:22px; left:0; white-space:nowrap; }
+#mastMeta { right:0; top:36px; text-align:right; }
+.hl { font-family:GDidot; font-weight:700; line-height:.9; letter-spacing:-.025em; }
+.it { font-family:GBodoni; font-style:italic; font-weight:400; }
+.w { display:inline-block; }
+.r { display:inline-block; padding:6px 14px 2px; margin:6px 4px; line-height:1; box-shadow: 5px 7px 0 rgba(23,21,26,.22); }
+.gl { position:absolute; top:0; bottom:0; width:2px; background:rgba(77,166,255,.55); transform-origin:50% 0; }
+.gh { position:absolute; left:0; right:0; height:2px; background:rgba(77,166,255,.55); transform-origin:0 50%; }
+.cell { position:absolute; height:210px; display:flex; align-items:flex-end; justify-content:center; font-family:GDidot; font-weight:700; font-size:190px; line-height:.8; }
+.row { position:absolute; left:0; right:0; height:100px; border-top:2px solid var(--ink); display:flex; align-items:center; }
+.row .n { width:250px; font-family:GMono; font-size:44px; font-weight:700; color:#2f6fb8; }
+.row .t { flex:1; font-family:GBodoni; font-size:56px; white-space:nowrap; overflow:hidden; }
+.row .c { width:70px; height:70px; position:relative; }
+.tick { position:absolute; inset:0; font-family:GDidot; font-weight:700; font-size:72px; line-height:70px; text-align:center; color:var(--blue); }
+#sheet { left:50px; top:640px; width:980px; height:1000px; background:#f7f2e6; box-shadow: 14px 20px 0 rgba(23,21,26,.16), 0 0 0 2px rgba(23,21,26,.15) inset; }
+.srow { position:absolute; left:50px; right:50px; height:140px; border-bottom:2px dashed rgba(23,21,26,.45); }
+.srow .lbl { position:absolute; left:0; top:60px; font-family:GBodoni; font-size:60px; white-space:nowrap; max-width:520px; overflow:hidden; }
+.srow .sm { position:absolute; left:0; top:4px; font-family:GMono; font-size:44px; letter-spacing:.04em; font-weight:700; opacity:.85; }
+.stamp { position:absolute; right:0; top:30px; padding:10px 22px 4px; border:7px double var(--purple); color:var(--purple); font-family:GGrot; font-weight:700; font-size:56px; letter-spacing:.06em; opacity:0; mix-blend-mode:multiply; }
+.stamp.bad { border-color:var(--orange); color:var(--orange); }
+#grain { z-index:21; position:absolute; left:-120px; top:-120px; width:1320px; height:2160px; pointer-events:none; opacity:.28; mix-blend-mode:multiply; }
+#fibres { z-index:21; position:absolute; inset:0; pointer-events:none; opacity:.2; mix-blend-mode:multiply; }
+#vig { z-index:22; position:absolute; inset:0; pointer-events:none; background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(80,60,30,.22) 100%); }
+.shade { position:absolute; inset:0; pointer-events:none; opacity:0; }
+#cap { z-index:20; position:absolute; left:40px; right:40px; bottom:150px; height:120px; display:flex; justify-content:center; align-items:center; }
+#cap span { font-family:GGrot; font-weight:700; font-size:58px; letter-spacing:.01em; text-transform:uppercase; background:var(--ink); color:var(--paper); padding:12px 22px 6px; box-shadow:6px 6px 0 var(--orange); white-space:nowrap; }
+#cap b { color:var(--orange); font-weight:700; }
+#folio { z-index:20; left:64px; right:64px; bottom:56px; height:56px; letter-spacing:.14em; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__G_DURATION__">
+
+  <!-- PAGE 1: intro + headline -->
+  <div class="page" id="p1">
+    <div class="abs halftone" id="dot1" style="color:var(--orange);opacity:.9;width:820px;height:820px;border-radius:50%;left:380px;top:1150px;mix-blend-mode:multiply;"></div>
+    <div class="abs halftone" id="dot2" style="color:var(--blue);opacity:.8;width:520px;height:520px;border-radius:50%;left:-200px;top:180px;mix-blend-mode:multiply;background-size:14px 14px;"></div>
+    <div class="abs it" id="lead1" style="left:64px;top:250px;width:952px;line-height:1.02;"></div>
+    <div class="abs hl mis" id="h1" style="left:56px;top:720px;width:968px;"></div>
+  </div>
+
+  <!-- PAGE 2: ransom note -->
+  <div class="page" id="p2" style="background:var(--paper2);">
+    <div class="abs halftone" id="dot2b" style="color:var(--purple);opacity:.45;width:560px;height:560px;border-radius:50%;left:640px;top:-160px;mix-blend-mode:multiply;background-size:16px 16px;"></div>
+    <div class="abs kicker" id="k2" style="left:64px;top:300px;"></div>
+    <div class="abs" id="ransom" style="left:40px;top:420px;width:1000px;text-align:center;"></div>
+    <div class="abs mono" id="cap2" style="left:64px;top:1240px;width:952px;font-weight:700;line-height:1.25;"></div>
+  </div>
+
+  <!-- PAGE 3: grid -->
+  <div class="page" id="p3">
+    <div class="abs" id="grid" style="left:64px;top:0;width:952px;height:1920px;"></div>
+    <div class="abs kicker" id="k3" style="left:64px;top:300px;"></div>
+    <div class="abs" id="cells" style="left:64px;top:380px;width:952px;height:200px;"></div>
+    <div class="abs it" id="h3b" style="left:64px;top:610px;width:952px;line-height:1.05;"></div>
+    <div class="abs hl mis" id="h3" style="left:56px;top:740px;width:968px;"></div>
+    <div class="abs" id="plan" style="left:64px;top:1000px;width:952px;height:620px;"></div>
+    <div class="abs halftone" id="dot3" style="color:var(--blue);opacity:.55;width:640px;height:640px;border-radius:50%;left:620px;top:1520px;mix-blend-mode:multiply;"></div>
+  </div>
+
+  <!-- PAGE 4: approval sheet -->
+  <div class="page" id="p4" style="background:var(--paper2);">
+    <div class="abs hl" id="h4" style="left:56px;top:240px;width:968px;line-height:.92;"></div>
+    <div class="abs" id="sheet">
+      <div class="abs mono" style="left:50px;top:30px;font-size:44px;letter-spacing:.02em;font-weight:700;">FORM QA-7 · APPROVAL</div>
+      <div class="rule thin" style="left:50px;right:50px;top:96px;"></div>
+      <div class="srow" style="top:110px;"><div class="sm">01 · LINT</div><div class="lbl"></div><div class="stamp">APPROVED</div></div>
+      <div class="srow" style="top:260px;"><div class="sm">02 · UNIT</div><div class="lbl"></div><div class="stamp">APPROVED</div></div>
+      <div class="srow" style="top:410px;"><div class="sm">03 · CONTRACT</div><div class="lbl"></div><div class="stamp">APPROVED</div></div>
+      <div class="srow" style="top:560px;"><div class="sm">04 · ACCEPTANCE</div><div class="lbl"></div><div class="stamp bad">APPROVED</div></div>
+      <div class="abs it" style="left:50px;top:730px;font-size:54px;">Signed,</div>
+      <div class="abs" id="sig" style="left:50px;top:790px;font-family:'KS Virgil';font-size:96px;color:var(--blue);transform:rotate(-4deg);">the reviewer</div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: outcome, ransom note returns -->
+  <div class="page" id="p5">
+    <div class="abs halftone" id="dot5" style="color:var(--orange);opacity:.85;width:1000px;height:1000px;border-radius:50%;left:420px;top:1250px;mix-blend-mode:multiply;background-size:22px 22px;"></div>
+    <div class="abs kicker" id="k5" style="left:64px;top:290px;"></div>
+    <div class="abs hl" id="h5" style="left:56px;top:360px;width:968px;"></div>
+    <div class="abs" id="worse" style="left:20px;top:820px;width:1040px;text-align:center;"></div>
+  </div>
+
+  <!-- PAGE 6: coda (paper, so the end-card cut is a hard visual change) -->
+  <div class="page" id="p6">
+    <div class="abs halftone" id="dot6" style="color:var(--purple);opacity:.55;width:1100px;height:1100px;border-radius:50%;left:200px;top:250px;mix-blend-mode:multiply;"></div>
+    <div class="abs kicker" id="k6" style="left:64px;top:400px;color:var(--orange);"></div>
+    <div class="abs it" id="h6b" style="left:64px;top:470px;width:952px;line-height:1.05;"></div>
+    <div class="abs hl mis" id="h6" style="left:56px;top:700px;width:968px;"></div>
+    <div class="rule" id="r6" style="left:64px;right:64px;top:1260px;"></div>
+    <div class="abs" id="big01" style="right:40px;top:1240px;font-family:GDidot;font-weight:700;font-size:300px;line-height:1;color:transparent;-webkit-text-stroke:3px var(--orange);"></div>
+  </div>
+
+  <!-- persistent chrome -->
+  <div class="abs" id="mast">
+    <div class="abs" id="mastTitle"></div>
+    <div class="abs kicker" id="mastMeta"><span id="pg">p. 01</span></div>
+    <div class="rule" id="mastRule" style="left:0;right:0;top:118px;"></div>
+  </div>
+  <div id="cap"><span id="capt"></span></div>
+  <div class="abs kicker" id="folio"><span id="fiss"></span><span id="fsec" style="position:absolute;right:0;">§ 01</span></div>
+
+  <svg id="fibres" width="1080" height="1920"><filter id="fb"><feTurbulence type="fractalNoise" baseFrequency=".9 .02" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .2  0 0 0 -1.2 .9"/></filter><rect width="1080" height="1920" filter="url(#fb)"/></svg>
+  <svg id="grain" width="1320" height="2160"><filter id="gr"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="2" seed="11"/><feColorMatrix values="0 0 0 0 .1  0 0 0 0 .08  0 0 0 0 .06  0 0 0 -1.6 1.05"/></filter><rect width="1320" height="2160" filter="url(#gr)"/></svg>
+  <div id="vig"></div>
+
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__G_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__G_DURATION__" data-volume="1"></audio>
+</div>
+<script>window.__G = /*__G_DATA__*/null;</script>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  var G = window.__G;
+  var FPS = 30;
+  function $(s) { return document.querySelector(s); }
+  function $$(s) { return Array.prototype.slice.call(document.querySelectorAll(s)); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  // Shrink el's font until its content fits maxW x maxH (never below minPx).
+  function fit(el, maxPx, minPx, maxH) {
+    var px = maxPx;
+    el.style.fontSize = px + "px";
+    while (px > minPx && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > maxH)) {
+      px = Math.max(minPx, Math.floor(px * 0.94));
+      el.style.fontSize = px + "px";
+    }
+    return px;
+  }
+  // Spoken words as inline-block spans (each enters on its own word start).
+  function fill(el, idxs, lastCls) {
+    el.innerHTML = idxs.map(function (i, k) {
+      var c = "w" + (lastCls && k === idxs.length - 1 ? " " + lastCls : "");
+      return '<span class="' + c + '" data-s="' + G.words[i].s + '">' + esc(G.words[i].t) + "</span>";
+    }).join(" ");
+    return $$("#" + el.id + " .w");
+  }
+
+  function build() {
+    var root = document.getElementById("root");
+    var END = parseFloat(root.getAttribute("data-duration"));
+    var B = G.bounds, P = G.pages;
+    var tl = gsap.timeline({ paused: true });
+    var seed = 9; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    function enter(ws, vars) {
+      ws.forEach(function (w) { tl.from(w, Object.assign({ y: 60, opacity: 0, duration: .38, ease: "power3.out" }, vars || {}), Math.max(0, parseFloat(w.getAttribute("data-s")) - .06)); });
+    }
+
+    // ---------- chrome
+    $("#mastTitle").textContent = G.masthead;
+    $("#fiss").textContent = "Keller AI · No. " + G.slug;
+    tl.from("#mastTitle", { y: -40, opacity: 0, duration: .6, ease: "power3.out" }, 0.0);
+    tl.from("#mastRule", { scaleX: 0, duration: .8, ease: "power3.inOut" }, 0.0);
+    var sects = B.slice(0, 6).map(function (b, i) { return [b, "p. 0" + (i + 1), "§ 0" + (i + 1)]; });
+    var fp = { t: 0 };
+    tl.to(fp, { t: END, duration: END, ease: "none", onUpdate: function () {
+      var cur = sects[0]; sects.forEach(function (s) { if (fp.t >= s[0]) cur = s; });
+      $("#pg").textContent = cur[1]; $("#fsec").textContent = cur[2];
+    } }, 0);
+
+    // ---------- page mechanics (r2-15s-G): slide in with blur ramp + shading, dim the old page, slow push
+    var pages = ["#p1", "#p2", "#p3", "#p4", "#p5", "#p6"];
+    pages.forEach(function (p, i) { gsap.set(p, { visibility: i ? "hidden" : "visible", zIndex: i + 1 }); });
+    pages.forEach(function (p) { var sh = document.createElement("div"); sh.className = "shade"; $(p).appendChild(sh); });
+    function slideIn(p, t, from, grad) {
+      var sh = $(p + " .shade");
+      sh.style.background = grad || "linear-gradient(90deg, rgba(23,21,26,.55), rgba(23,21,26,0) 60%)";
+      tl.set(p, { visibility: "visible", boxShadow: "0 0 60px 10px rgba(23,21,26,.45)" }, t);
+      tl.fromTo(p, from, { x: 0, y: 0, rotation: 0, rotationX: 0, duration: 0.55, ease: "power4.out" }, t);
+      tl.fromTo(p, { filter: "blur(14px)" }, { filter: "blur(0px)", duration: 0.32, ease: "power2.out" }, t);
+      tl.fromTo(sh, { opacity: 1 }, { opacity: 0, duration: 0.6, ease: "power2.out" }, t);
+      tl.set(p, { boxShadow: "none", filter: "none" }, t + 0.62);
+    }
+    function dimOut(p, t) { var sh = $(p + " .shade"); tl.set(sh, { background: "rgba(23,21,26,1)" }, t); tl.fromTo(sh, { opacity: 0 }, { opacity: .45, duration: .5, ease: "power2.in" }, t); }
+    function push(p, t0, t1, s1) { tl.fromTo(p, { scale: 1 }, { scale: s1 || 1.045, duration: Math.max(.1, t1 - t0), ease: "none" }, t0); }
+    function hideAt(p, t) { tl.set(p, { visibility: "hidden" }, t); }
+
+    // ransom-note letters in the deliberately-bad faces (D4: OFL faces stand in for the unlicensed ones)
+    var bad = [
+      ["KS Comic", "#ff7a18", "#17151a"], ["BPapyrus", "#efe7d6", "#17151a"], ["KS Virgil", "#17151a", "#f5f5f5"],
+      ["BImpact", "#4da6ff", "#17151a"], ["BHerc", "#f3e24a", "#17151a"], ["KS Lilita", "#ffffff", "#c2185b"],
+      ["BTypew", "#7a4dff", "#ffffff"], ["BCopper", "#efe7d6", "#17151a"], ["KS Comic", "#17151a", "#ff7a18"],
+      ["BPapyrus", "#ff7a18", "#17151a"], ["KS Virgil", "#4da6ff", "#ffffff"], ["BImpact", "#ffffff", "#17151a"],
+      ["KS Lilita", "#f3e24a", "#4da6ff"]
+    ];
+    function ransom(el, text, maxSz, offset) {
+      var lines = [];
+      text.split(" ").forEach(function (wd) {
+        while (wd.length > 8) { var cut = Math.ceil(wd.length / 2); lines.push(wd.slice(0, cut)); wd = wd.slice(cut); }
+        if (wd) lines.push(wd);
+      });
+      var longest = Math.max.apply(null, lines.map(function (l) { return l.length; }));
+      var base = Math.max(90, Math.min(maxSz, (980 / longest - 40) / 0.72));
+      var out = [], k = offset || 0;
+      lines.forEach(function (ln) {
+        var line = document.createElement("div"); line.style.marginBottom = "18px";
+        ln.split("").forEach(function (ch) {
+          var b = bad[k % bad.length], s = document.createElement("span"); s.className = "r";
+          s.style.cssText += "font-family:'" + b[0] + "';background:" + b[1] + ";color:" + b[2] + ";font-size:" + Math.round(base * (0.88 + rnd() * 0.24)) + "px;";
+          if (k % 4 === 2) s.style.textDecoration = "underline wavy #ff3b3b";
+          s.textContent = ch; line.appendChild(s); out.push(s); k++;
+        });
+        el.appendChild(line);
+      });
+      return out;
+    }
+
+    // ---------- P1
+    tl.fromTo("#dot1", { scale: 0.55, x: 160 }, { scale: 1, x: 0, duration: 1.4, ease: "power3.out" }, 0);
+    tl.to("#dot1", { y: -120, duration: B[1] + .4, ease: "none" }, 0);
+    tl.fromTo("#dot2", { x: -120 }, { x: 0, y: 90, duration: B[1] + .4, ease: "power1.out" }, 0);
+    push("#p1", 0, B[1] + .3, 1.05);
+    var l1 = fill($("#lead1"), P[0].lead); fit($("#lead1"), 104, 56, 440);
+    enter(l1, { y: 50 });
+    var h1 = fill($("#h1"), P[0].hl, "it mis-o"); fit($("#h1"), 250, 96, 560);
+    enter(h1, { y: 160, rotation: -2, duration: .5, ease: "power4.out" });
+    if (h1.length) tl.fromTo("#h1", { textShadow: "30px 18px 0 rgba(77,166,255,.78), -24px -14px 0 rgba(255,122,24,.72)" },
+      { textShadow: "7px 5px 0 rgba(77,166,255,.78), -4px -3px 0 rgba(255,122,24,.72)", duration: .8, ease: "power3.out" }, parseFloat(h1[0].getAttribute("data-s")));
+
+    // ---------- P2 ransom note
+    slideIn("#p2", B[1], { x: 1080, rotation: 4 }); dimOut("#p1", B[1]); push("#p2", B[1], B[2] + .3, 1.04);
+    hideAt("#p1", B[1] + .6);
+    tl.fromTo("#dot2b", { rotation: 0, y: 0 }, { rotation: 20, y: 120, duration: B[2] - B[1] + .3, ease: "none" }, B[1]);
+    $("#k2").textContent = P[1].kicker;
+    tl.from("#k2", { opacity: 0, x: -40, duration: .3 }, B[1] + .05);
+    var rl = ransom($("#ransom"), G.ransom2.text, 200, 0);
+    rl.forEach(function (s, i) {
+      var rot = (rnd() - .5) * 26; gsap.set(s, { rotation: rot, y: (rnd() - .5) * 40 });
+      tl.from(s, { scale: 2.4, opacity: 0, rotation: rot + (rnd() - .5) * 60, duration: .14, ease: "power2.in" }, G.ransom2.t0 + i * G.ransom2.step);
+    });
+    tl.to(rl, { rotation: "+=4", duration: .22, ease: "sine.inOut", yoyo: true, repeat: 3, stagger: .02 }, G.ransom2.t0 + rl.length * G.ransom2.step + .1);
+    var c2 = fill($("#cap2"), P[1].idx); fit($("#cap2"), 52, 44, 330);
+    enter(c2, { y: 20, duration: .25 });
+
+    // ---------- P3 grid
+    slideIn("#p3", B[2], { y: 1920 }, "linear-gradient(0deg, rgba(23,21,26,.55), rgba(23,21,26,0) 60%)"); dimOut("#p2", B[2]); push("#p3", B[2], B[3] + .3, 1.035);
+    hideAt("#p2", B[2] + .6);
+    tl.from("#dot3", { scale: .3, opacity: 0, duration: 1, ease: "power3.out" }, B[2] + .5);
+    tl.to("#dot3", { y: -160, duration: B[3] - B[2], ease: "none" }, B[2] + .5);
+    var GR = $("#grid");
+    for (var c = 0; c <= 8; c++) { var gl = document.createElement("div"); gl.className = "gl"; gl.style.left = (c * 119) + "px"; GR.appendChild(gl); }
+    [380, 580, 720, 940, 1000, 1640].forEach(function (y) { var gh = document.createElement("div"); gh.className = "gh"; gh.style.top = y + "px"; GR.appendChild(gh); });
+    tl.from("#grid .gl", { scaleY: 0, duration: .5, ease: "power3.inOut", stagger: .03 }, B[2] + .04);
+    tl.from("#grid .gh", { scaleX: 0, duration: .5, ease: "power3.inOut", stagger: .04 }, B[2] + .08);
+    $("#k3").textContent = P[2].kicker;
+    tl.from("#k3", { opacity: 0, duration: .25 }, B[2] + .04);
+    var word = G.cells.text, C = $("#cells");
+    var cx = document.createElement("canvas").getContext("2d"); cx.font = "700 190px GDidot";
+    var gw = word.split("").map(function (ch) { return cx.measureText(ch).width; });
+    var track = 10, tot = gw.reduce(function (a, b) { return a + b; }, 0) + track * (word.length - 1);
+    var fs = Math.min(1, 952 / tot), acc = (952 - tot * fs) / 2;
+    word.split("").forEach(function (ch, i) {
+      var d = document.createElement("div"); d.className = "cell"; d.style.left = acc + "px"; d.style.width = (gw[i] * fs) + "px"; d.style.fontSize = (190 * fs) + "px"; d.style.top = "0px"; d.textContent = ch;
+      acc += (gw[i] + track) * fs; C.appendChild(d);
+      var b = bad[i % bad.length], t = G.cells.t0 + i * .045;
+      tl.fromTo(d, { x: (rnd() - .5) * 300, y: (rnd() - .5) * 420 + 300, rotation: (rnd() - .5) * 40, scale: 1.3, opacity: 0 },
+        { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1, duration: .38, ease: "power4.out" }, t);
+      tl.set(d, { fontFamily: b[0], color: b[2] === "#f5f5f5" ? "#17151a" : b[2] }, 0);
+      tl.set(d, { fontFamily: "GDidot", color: "#17151a" }, t + .3);
+    });
+    tl.to("#cells", { textShadow: "5px 4px 0 rgba(77,166,255,.8)", duration: .01 }, G.cells.t0 + word.length * .045 + .3);
+    var h3b = fill($("#h3b"), P[2].lead); fit($("#h3b"), 76, 48, 120); enter(h3b, { y: 30, duration: .3 });
+    var h3 = fill($("#h3"), P[2].hl); fit($("#h3"), 168, 72, 230); enter(h3, { y: 120, duration: .5, ease: "power4.out" });
+    var PL = $("#plan");
+    G.rows.forEach(function (t, i) {
+      var r = document.createElement("div"); r.className = "row"; r.style.top = (i * 104) + "px";
+      r.innerHTML = '<span class="n">PLAN §' + (i + 1) + '</span><span class="t">' + esc(t) + '</span><span class="c"><span class="tick">✓</span></span>';
+      PL.appendChild(r);
+    });
+    tl.from("#plan .row", { x: -80, opacity: 0, duration: .35, ease: "power3.out", stagger: .07 }, B[2] + .6);
+    $$("#plan .tick").forEach(function (tk, i) { tl.from(tk, { scale: .5, rotation: -30, opacity: 0, duration: .16, ease: "power4.out" }, G.ticks[i]); });
+
+    // ---------- P4 approval sheet
+    slideIn("#p4", B[3], { x: -1080, rotation: -3 }, "linear-gradient(270deg, rgba(23,21,26,.55), rgba(23,21,26,0) 60%)"); dimOut("#p3", B[3]);
+    hideAt("#p3", B[3] + .6);
+    gsap.set("#sheet", { rotation: -1.2, transformOrigin: "50% 62%" });
+    tl.from("#sheet", { y: 400, rotation: 6, duration: .55, ease: "power4.out" }, B[3] + .06);
+    var h4 = fill($("#h4"), P[3].lead.concat(P[3].hl)); fit($("#h4"), 150, 64, 360);
+    h4.forEach(function (w, k) { if (k >= P[3].lead.length) { w.classList.add("it"); w.classList.add("mis-o"); } });
+    enter(h4, { x: -40, y: 0, duration: .35 });
+    $$("#sheet .lbl").forEach(function (l, i) { l.textContent = G.form[i]; });
+    var st = $$("#sheet .stamp"), rots = [-3, -2, -3.5, -17], dxs = [0, 0, 0, -40];
+    st.forEach(function (s, i) {
+      var t = G.stamps[i];
+      tl.fromTo(s, { opacity: 0, scale: 2.2, rotation: rots[i] - 8, x: dxs[i] }, { opacity: .92, scale: 1, rotation: rots[i], x: dxs[i], duration: .09, ease: "power2.in" }, t - .09);
+      tl.to("#sheet", { y: "+=6", duration: .05, yoyo: true, repeat: 1, ease: "power1.out" }, t);
+    });
+    tl.from("#sig", { clipPath: "inset(0 100% 0 0)", duration: .5, ease: "none" }, G.stamps[2] + .1);
+    // the camera pushes in on row 04 as the late stamp thuds, the headline dims
+    var pin = Math.max(B[3] + .7, G.stamps[3] - .5);
+    tl.to("#sheet", { scale: 1.18, rotation: 0, y: -120, duration: Math.max(.2, G.stamps[3] - pin), ease: "power3.inOut" }, pin);
+    tl.to("#h4", { opacity: .3, duration: .4 }, pin);
+    tl.to("#sheet", { scale: 1.24, duration: Math.max(.2, B[4] + .5 - G.stamps[3]), ease: "none" }, G.stamps[3]);
+    tl.fromTo("#p4", { scale: 1 }, { scale: 1.03, duration: Math.max(.2, pin - B[3]), ease: "none" }, B[3]);
+
+    // ---------- P5 outcome: the mess is back
+    slideIn("#p5", B[4], { y: -1920 }, "linear-gradient(180deg, rgba(23,21,26,.55), rgba(23,21,26,0) 60%)"); dimOut("#p4", B[4]); push("#p5", B[4], B[5] + .3, 1.05);
+    hideAt("#p4", B[4] + .6);
+    tl.from("#dot5", { scale: .3, opacity: 0, duration: 1, ease: "power3.out" }, B[4] + .05);
+    tl.to("#dot5", { y: -140, duration: B[5] - B[4] + .3, ease: "none" }, B[4] + .05);
+    $("#k5").textContent = P[4].kicker;
+    tl.from("#k5", { opacity: 0, duration: .25 }, B[4]);
+    var h5 = fill($("#h5"), P[4].lead); fit($("#h5"), 170, 72, 420); enter(h5, { y: 100, duration: .35, ease: "power4.out" });
+    var wl = ransom($("#worse"), G.ransom5.text, 260, 3);
+    wl.forEach(function (s, i) {
+      var rot = (rnd() - .5) * 30; gsap.set(s, { rotation: rot, y: (rnd() - .5) * 50 });
+      tl.from(s, { scale: 2.2, opacity: 0, duration: .12, ease: "power2.in" }, G.ransom5.t0 + i * G.ransom5.step);
+    });
+    tl.to(wl, { rotation: "+=5", duration: .2, yoyo: true, repeat: 2, ease: "sine.inOut", stagger: .02 }, G.ransom5.t0 + wl.length * G.ransom5.step + .1);
+
+    // ---------- P6 coda: the page folds down
+    tl.set("#p6", { visibility: "visible", transformOrigin: "50% 0%", transformPerspective: 2200 }, B[5]);
+    tl.fromTo("#p6", { rotationX: -95 }, { rotationX: 0, duration: .6, ease: "power3.out" }, B[5]);
+    var sh6 = $("#p6 .shade"); sh6.style.background = "linear-gradient(180deg, rgba(23,21,26,.45), rgba(0,0,0,0) 70%)";
+    tl.fromTo(sh6, { opacity: 1 }, { opacity: 0, duration: .7, ease: "power2.out" }, B[5]);
+    tl.fromTo("#p6", { filter: "blur(10px)" }, { filter: "blur(0px)", duration: .35, ease: "power2.out" }, B[5]);
+    dimOut("#p5", B[5]);
+    hideAt("#p5", B[5] + .65);
+    tl.fromTo("#p6", { scale: 1 }, { scale: 1.06, duration: B[6] - B[5], ease: "none" }, B[5]);
+    tl.from("#dot6", { scale: .4, opacity: 0, duration: 1.2, ease: "power3.out" }, B[5] + .2);
+    tl.to("#dot6", { x: -70, y: 60, rotation: 8, duration: B[6] - B[5], ease: "none" }, B[5]);
+    $("#k6").textContent = P[5].kicker;
+    tl.from("#k6", { opacity: 0, duration: .3 }, B[5] + .15);
+    var h6b = fill($("#h6b"), P[5].lead); fit($("#h6b"), 88, 52, 220); enter(h6b, { y: 30, x: -20, duration: .35 });
+    var h6 = fill($("#h6"), P[5].hl, "it mis-o"); fit($("#h6"), 230, 96, 540); enter(h6, { y: 140, duration: .55, ease: "power4.out" });
+    tl.fromTo("#h6", { textShadow: "28px 16px 0 rgba(77,166,255,.78), -22px -12px 0 rgba(255,122,24,.72)" }, { textShadow: "7px 5px 0 rgba(77,166,255,.78), -4px -3px 0 rgba(255,122,24,.72)", duration: .9, ease: "power3.out" }, B[5] + .3);
+    tl.from("#r6", { scaleX: 0, duration: .6, ease: "power3.inOut" }, B[5] + .5);
+    $("#big01").textContent = G.slug;
+    tl.fromTo("#big01", { opacity: 0, x: 80 }, { opacity: 1, x: 0, duration: .6, ease: "power3.out" }, B[5] + .4);
+    tl.to("#big01", { x: -40, duration: Math.max(.2, B[6] - B[5] - 1), ease: "none" }, B[5] + 1);
+
+    // ---------- burned captions, word-synced to the VO
+    var CW = G.words, groups = G.capGroups, capt = $("#capt"), cp = { t: 0 };
+    tl.to(cp, { t: END, duration: END, ease: "none", onUpdate: function () {
+      var t = cp.t, g = null;
+      groups.forEach(function (gr) { if (t >= CW[gr[0]].s - 0.05) g = gr; });
+      if (!g) { capt.parentNode.style.visibility = "hidden"; return; }
+      capt.parentNode.style.visibility = "visible";
+      var h = "";
+      for (var i = g[0]; i < g[1]; i++) {
+        if (CW[i].s - 0.05 > t) break;
+        var cur = (i + 1 >= g[1] || CW[i + 1].s - 0.05 > t);
+        h += (i > g[0] ? " " : "") + (cur ? "<b>" + esc(CW[i].t) + "</b>" : esc(CW[i].t));
+      }
+      capt.innerHTML = h;
+    } }, 0);
+
+    // ---------- shared end card (kit/endcard.js): hard cut after the last word, slow push through the hold
+    var plan = KAEndCard.plan({ lastWordEnd: G.lastWordEnd, start: G.endcard.start, hold: G.endcard.hold, fps: FPS });
+    if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style G: data-duration " + END + " != end-card plan end " + plan.end);
+    var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: G.brand });
+    tl.fromTo(card, { scale: 1 }, { scale: 1.04, duration: plan.end - plan.start, ease: "none" }, plan.start);
+    tl.set({}, {}, END);
+    window.__timelines["main"] = tl;
+  }
+
+  // Request every face before building: ransom letters and the canvas measure need them loaded.
+  var faces = ["700 100px GDidot", "400 100px GBodoni", "italic 400 100px GBodoni", "700 100px GGrot", "500 100px GGrot",
+               "400 100px GMono", "400 100px 'KS Comic'", "400 100px 'KS Virgil'", "400 100px 'KS Lilita'",
+               "400 100px BPapyrus", "400 100px BHerc", "400 100px BImpact", "400 100px BCopper", "400 100px BTypew"];
+  if (document.fonts && document.fonts.load) {
+    Promise.all(faces.map(function (f) { return document.fonts.load(f).catch(function () { return null; }); }))
+      .then(function () { return document.fonts.ready; }).then(build);
+  } else { build(); }
+})();
+</script>
+</body>
+</html>

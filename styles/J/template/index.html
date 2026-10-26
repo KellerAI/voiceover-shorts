@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style J: hand-drawn sketchbook, __J_TITLE__</title>
+<!--
+  Style J template (plugin styles/J). Canonical look: the reference lookdev (read only).
+  Instantiated by styles/J/build.py, which fills the __J_*__ placeholders and window.__J (the
+  page plan derived from the words file). Kept from the canonical: one cream sketchbook strip of
+  four full-height pages under a camera, whip-page transitions (anticipation, expo whip, vertical
+  smear, camera dip and bouncy settle), navy ink drawn live with a seeded rough displacement,
+  a single vermilion marker, glyph-by-glyph handwriting timed to each spoken word with a riding
+  nib, circled chapter numbers, highlight swipes, doodles (doc, robot pair, patched robots, bank),
+  the sloppy full-page slam in Comic Shanns, paper dots, margin rule, fibre, 12 fps grain, vignette.
+  Changed for the preflight: bundled OFL faces only (D4), 46 px footer, every page draws its
+  doodle from its first beat so the lower frame is never empty, glyphs are hidden until written,
+  and the shared kit end card (hard cut 0.1 s after the last word, 2 s hold, slow push).
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Virgil"; font-weight: 300 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+
+:root {
+  --paper: #FBF7F0;
+  --ink: #10243E;
+  --ink2: #2E4262;
+  --mark: #E4572E;
+  --hand: "KS Virgil", cursive;
+  --sloppy: "KS Shanns", cursive;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--paper);
+  font-family: var(--hand); color: var(--ink); }
+#lens { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: hidden; }
+#cam { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 540px 960px; }
+#strip { position: absolute; left: 0; top: 0; width: 1080px; height: 7680px; }
+.pg { position: absolute; left: 0; width: 1080px; height: 1920px; background: var(--paper); overflow: hidden; }
+.pg::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26px; z-index: 5;
+  background: linear-gradient(rgba(60,40,10,0.16), rgba(60,40,10,0)); }
+.dots { position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(16,36,62,0.14) 1.6px, transparent 2.2px);
+  background-size: 54px 54px; background-position: 27px 27px; }
+.margin { position: absolute; top: 0; bottom: 0; left: 78px; width: 2px; background: rgba(228,87,46,0.25); }
+
+svg.ink { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: visible; }
+svg.ink path { fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
+svg.ink path.mk { stroke: var(--mark); mix-blend-mode: multiply; }
+svg.ink path.hl { stroke: var(--mark); opacity: 0.3; mix-blend-mode: multiply; }
+
+.t { position: absolute; white-space: nowrap; line-height: 1; transform-origin: 0 60%; }
+.wd { display: inline-block; white-space: nowrap; }
+.g { display: inline-block; clip-path: inset(-15% 100% -15% -8%); }
+
+#scrim { position: absolute; inset: 0; background: var(--paper); opacity: 0; visibility: hidden; z-index: 6; }
+#lgtm { position: absolute; inset: 0; z-index: 7; }
+#lgtm .t { font-family: var(--sloppy); }
+#lgtm .g { clip-path: none; visibility: hidden; }
+
+#nib { position: absolute; left: 0; top: 0; width: 10px; height: 10px; overflow: visible; opacity: 0; pointer-events: none; z-index: 9; }
+
+.grain { position: absolute; inset: -40px; pointer-events: none; opacity: 0.55; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.38  0 0 0 0 0.28  0 0 0 0.16 0'/></filter><rect width='400' height='400' filter='url(%23n)'/></svg>"); }
+.fibre { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1080' height='1920'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.004 0.012' numOctaves='4' seed='11'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.47  0 0 0 0 0.35  0 0 0 0.12 0'/></filter><rect width='1080' height='1920' filter='url(%23f)'/></svg>"); }
+.vig { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 45%, rgba(0,0,0,0) 60%, rgba(70,50,20,0.16) 100%); }
+
+/* footer: 46 px (the canonical's 34 px fails the 44 px legibility floor) */
+.foot { position: absolute; left: 0; right: 0; bottom: 40px; height: 52px; pointer-events: none; z-index: 20; }
+.foot .l { position: absolute; left: 136px; bottom: 0; font-size: 46px; color: var(--ink2); }
+.foot .r { position: absolute; right: 64px; bottom: 0; font-size: 46px; color: var(--ink2); }
+.foot img { position: absolute; left: 72px; bottom: 2px; width: 50px; height: 50px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="vb" filterUnits="userSpaceOnUse" x="-40" y="-160" width="1160" height="2240">
+      <feGaussianBlur id="vbBlur" stdDeviation="0 0"/>
+    </filter>
+  </defs>
+</svg>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__J_DURATION__">
+  <div id="lens">
+    <div id="cam" data-layout-allow-overflow>
+      <div id="strip" data-layout-allow-overflow>
+        <section class="pg" id="p0" style="top:0px"><div class="dots"></div><div class="margin"></div></section>
+        <section class="pg" id="p1" style="top:1920px"><div class="dots"></div><div class="margin"></div></section>
+        <section class="pg" id="p2" style="top:3840px"><div class="dots"></div><div class="margin"></div></section>
+        <section class="pg" id="p3" style="top:5760px"><div class="dots"></div><div class="margin"></div></section>
+        <svg id="nib" viewBox="0 0 10 10">
+          <g transform="rotate(32)">
+            <path d="M0 0 L-8 -24 L8 -24 Z" fill="#10243E"/>
+            <rect x="-10" y="-96" width="20" height="74" rx="6" fill="#10243E"/>
+            <rect x="-10" y="-58" width="20" height="12" fill="#E4572E"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="fibre"></div>
+  <div class="grain" id="grain"></div>
+  <div class="vig"></div>
+  <div class="foot" id="foot">
+    <img src="assets/brand/keller-ai-logo.svg" alt=""/>
+    <div class="l" id="footL"></div>
+    <div class="r" id="pg">p. 1</div>
+  </div>
+
+  <audio id="narration" src="assets/voice_norm.wav" data-start="0" data-duration="__J_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__J_DURATION__" data-volume="1"></audio>
+</div>
+
+<script>window.__J = /*__J_DATA__*/null;</script>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__J;
+  var NS = "http://www.w3.org/2000/svg";
+  var FPS = 30;
+  var END = parseFloat(document.getElementById("root").getAttribute("data-duration"));
+  var HAND = '"KS Virgil"', SLOPPY = '"KS Shanns"';
+
+  var seed = 49;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function j(a) { return (rnd() * 2 - 1) * a; }
+
+  // ---------- stroke generators (canonical r4-S49-J) ----------
+  function hl(x1, y1, x2, y2, bow) {
+    var dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    var b = (bow == null ? L * 0.025 : bow) + j(3);
+    var o = 6;
+    var sx = x1 - dx / L * o + j(2), sy = y1 - dy / L * o + j(2), ex = x2 + dx / L * o + j(2), ey = y2 + dy / L * o + j(2);
+    var cx = (sx + ex) / 2 + nx * b, cy = (sy + ey) / 2 + ny * b;
+    return "M" + sx.toFixed(1) + " " + sy.toFixed(1) + " Q" + cx.toFixed(1) + " " + cy.toFixed(1) + " " + ex.toFixed(1) + " " + ey.toFixed(1);
+  }
+  function box(x, y, w, h) {
+    return [hl(x, y, x + w, y + j(4)), hl(x + w, y, x + w + j(4), y + h), hl(x + w, y + h, x, y + h + j(4)), hl(x, y + h, x + j(4), y)];
+  }
+  function loop(cx, cy, rx, ry, turns, start) {
+    var d = "", N = 72, T = turns || 1.15, a0 = start == null ? -2.4 : start;
+    for (var i = 0; i <= N; i++) {
+      var a = a0 + (i / N) * T * Math.PI * 2, k = 1 + 0.06 * (i / N);
+      var x = cx + Math.cos(a) * rx * k, y = cy + Math.sin(a) * ry * (2 - k);
+      d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    return d;
+  }
+  function arrowHead(x, y, ang, s) {
+    var a1 = ang + 2.6, a2 = ang - 2.6;
+    return "M" + (x + Math.cos(a1) * s).toFixed(1) + " " + (y + Math.sin(a1) * s).toFixed(1) + " L" + x + " " + y + " L" + (x + Math.cos(a2) * s).toFixed(1) + " " + (y + Math.sin(a2) * s).toFixed(1);
+  }
+  function quadArrow(x1, y1, cx, cy, x2, y2, hs) {
+    return ["M" + x1 + " " + y1 + " Q" + cx + " " + cy + " " + x2 + " " + y2, arrowHead(x2, y2, Math.atan2(y2 - cy, x2 - cx), hs || 38)];
+  }
+  function patch(cx, cy, R) {
+    var d = "", n = 11;
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1), y = cy - R + t * 2 * R, hw = Math.sqrt(Math.max(0, R * R - (y - cy) * (y - cy))) + 6;
+      var x = (i % 2 ? cx + hw : cx - hw) + j(4);
+      d += (i ? " L" : "M") + x.toFixed(1) + " " + (y + j(3)).toFixed(1);
+    }
+    return d;
+  }
+  function robot(x, y, s) {
+    var out = box(x, y, 280 * s, 230 * s);
+    out.push(hl(x + 140 * s, y, x + 140 * s, y - 62 * s, 4));
+    out.push(loop(x + 140 * s, y - 78 * s, 15 * s, 15 * s, 1.05, 0));
+    out.push(hl(x - 22 * s, y + 70 * s, x - 22 * s, y + 160 * s, 2));
+    out.push(hl(x + 302 * s, y + 70 * s, x + 302 * s, y + 160 * s, 2));
+    out.push(loop(x + 90 * s, y + 95 * s, 18 * s, 18 * s, 1.05, 0));
+    out.push(loop(x + 190 * s, y + 95 * s, 18 * s, 18 * s, 1.05, 0));
+    out.push("M" + (x + 70 * s) + " " + (y + 165 * s) + " L" + (x + 210 * s) + " " + (y + 165 * s) +
+      " M" + (x + 90 * s) + " " + (y + 150 * s) + " L" + (x + 90 * s) + " " + (y + 190 * s) +
+      " M" + (x + 140 * s) + " " + (y + 150 * s) + " L" + (x + 140 * s) + " " + (y + 190 * s) +
+      " M" + (x + 190 * s) + " " + (y + 150 * s) + " L" + (x + 190 * s) + " " + (y + 190 * s));
+    return out;
+  }
+
+  // Doodle library, in the canonical page coordinates. Each item: [d, width, class].
+  // The group is fitted into the space under the page's text, bottom-aligned, so the lower frame
+  // carries a drawing on every page.
+  var DOODLES = {
+    doc: function () {
+      var out = [];
+      ["M130 930 L130 1250 L400 1250 L400 980 L350 930 Z", "M350 930 L350 980 L400 980",
+        hl(170, 1030, 330, 1030, 2), hl(170, 1085, 360, 1085, 2), hl(170, 1140, 350, 1140, 2), hl(170, 1195, 300, 1195, 2)
+      ].forEach(function (d) { out.push([d, 8]); });
+      quadArrow(450, 1090, 560, 990, 640, 1090, 40).forEach(function (d) { out.push([d, 8]); });
+      box(680, 960, 252, 252).forEach(function (d) { out.push([d, 8]); });
+      return { strokes: out, logo: { x: 694, y: 974, s: 224 } };
+    },
+    robots: function () {
+      var out = [], RS = 1.25, ax = 110, ay = 1130, bx = 640, by = 1400;
+      robot(ax, ay, RS).forEach(function (d) { out.push([d, 9]); });
+      quadArrow(ax + 400, ay + 70, ax + 640, ay + 60, bx + 190, by - 110, 42).forEach(function (d) { out.push([d, 9]); });
+      robot(bx, by, RS).forEach(function (d) { out.push([d, 9]); });
+      quadArrow(bx - 40, by + 170, bx - 200, by + 270, ax + 330, ay + 380, 40).forEach(function (d) { out.push([d, 8]); });
+      return { strokes: out };
+    },
+    patched: function () {
+      var out = [], R3 = 1.45, a3x = 90, a3y = 1060, b3x = 590, b3y = 1060;
+      robot(a3x, a3y, R3).forEach(function (d) { out.push([d, 9]); });
+      robot(b3x, b3y, R3).forEach(function (d) { out.push([d, 9]); });
+      var pr = 40 * R3 * 0.85;
+      [[a3x, a3y], [b3x, b3y]].forEach(function (q) {
+        var cx = q[0] + 90 * R3, cy = q[1] + 95 * R3;
+        out.push([patch(cx, cy, pr), 11, "mk"]); out.push([patch(cx, cy, pr), 11, "mk"]);
+      });
+      out.push(["M150 1480 Q150 1560 240 1566 L 840 1566 Q 930 1560 930 1480", 12, "mk"]);
+      return { strokes: out };
+    },
+    bank: function () {
+      var out = [];
+      [hl(220, 1220, 860, 1226, 2), hl(190, 1270, 890, 1276, 2),
+        hl(300, 940, 300, 1190, 3), hl(430, 940, 430, 1190, -3), hl(650, 940, 650, 1190, 3), hl(780, 940, 780, 1190, -3),
+        hl(220, 888, 860, 890, 2), hl(240, 880, 540, 650, 0), hl(540, 650, 840, 880, 0), loop(540, 790, 34, 34, 1.05, 0)
+      ].forEach(function (d) { out.push([d, 9]); });
+      ["M920 640 L980 590", "M950 710 L1030 700", "M900 570 L910 500", "M170 660 L110 610"].forEach(function (d) { out.push([d, 12, "mk"]); });
+      return { strokes: out };
+    }
+  };
+
+  var PG = [], NIBSEG = [], WRITES = [];
+  for (var i = 0; i < 4; i++) {
+    var el = document.getElementById("p" + i);
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "ink"); svg.setAttribute("viewBox", "0 0 1080 1920");
+    var g = document.createElementNS(NS, "g"); g.setAttribute("filter", "url(#rough)");
+    svg.appendChild(g); el.appendChild(svg);
+    PG.push({ el: el, G: g });
+  }
+  function mk(parent, pi, d, w, cls, xf) {
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", d); p.setAttribute("pathLength", "1");
+    p.setAttribute("stroke-width", w || 7);
+    p.setAttribute("stroke-dasharray", "1 2"); p.setAttribute("stroke-dashoffset", "1");
+    if (cls) p.setAttribute("class", cls);
+    p.style.visibility = "hidden";
+    parent.appendChild(p); p._pi = pi; p._xf = xf || null; return p;
+  }
+  function paths(pi, ds, w, cls) { return ds.map(function (d) { return mk(PG[pi].G, pi, d, w, cls); }); }
+
+  // ---------- text, glyph by glyph; each glyph remembers its spoken word ----------
+  var meas = document.createElement("canvas").getContext("2d");
+  function textW(s, size, fam) { meas.font = size + "px " + fam; return meas.measureText(s).width * 1.04; }
+  function txt(pi, words, x, y, size, o) {
+    o = o || {};
+    var d = document.createElement("div"); d.className = "t"; d.setAttribute("data-layout-allow-overlap", "");
+    d.style.left = x + "px"; d.style.top = y + "px"; d.style.fontSize = size + "px";
+    d.style.color = o.color || "var(--ink)";
+    if (o.rot) d.style.transform = "rotate(" + o.rot + "deg)";
+    var gl = [], wr = [];
+    words.forEach(function (w, wi) {
+      if (wi) d.appendChild(document.createTextNode(" "));
+      var ws = document.createElement("span"); ws.className = "wd";
+      var a = gl.length;
+      for (var c = 0; c < w.text.length; c++) {
+        var g = document.createElement("span"); g.className = "g"; g.textContent = w.text[c];
+        g.style.transform = "translateY(" + j(size * 0.02).toFixed(1) + "px) rotate(" + j(2.2).toFixed(1) + "deg)";
+        ws.appendChild(g); gl.push(g);
+      }
+      wr.push({ a: a, b: gl.length, t0: w.start, t1: w.end });
+      d.appendChild(ws);
+    });
+    PG[pi].el.appendChild(d);
+    var obj = { el: d, g: gl, pi: pi, size: size, words: wr };
+    WRITES.push(obj); return obj;
+  }
+  function wrap(words, size, maxW) {
+    var lines = [], cur = [], curW = 0, sp = textW(" ", size, HAND);
+    words.forEach(function (w) {
+      var ww = textW(w.text, size, HAND);
+      if (cur.length && curW + sp + ww > maxW) { lines.push(cur); cur = []; curW = 0; }
+      curW += (cur.length ? sp : 0) + ww; cur.push(w);
+    });
+    if (cur.length) lines.push(cur);
+    return lines;
+  }
+
+  // ---------- layout: chapter marker, body, hero, after, doodle (measured, then fitted) ----------
+  var TOP = 262, LEFT = 110, WRAP = 880, DOODLE_BOTTOM = 1770, DOODLE_MIN = 380;
+  function planText(P, k) {
+    var bs = Math.max(64, 104 * k), as = Math.max(60, 96 * k);
+    var heroW = 0;
+    P.hero.forEach(function (w) { heroW = Math.max(heroW, textW(w.text, 100, HAND) / 100); });
+    var hs = Math.max(110, Math.min(P.heroMax * k, heroW > 0 ? 900 / heroW : 200));
+    var rows = [], y = TOP;
+    wrap(P.body, bs, WRAP).forEach(function (ln) { rows.push({ words: ln, y: y, size: bs, role: "body" }); y += bs * 1.2; });
+    if (P.hero.length) {
+      y += 12;
+      P.hero.forEach(function (w) { rows.push({ words: [w], y: y, size: hs, role: "hero" }); y += hs * 1.06; });
+      y += 22;
+    }
+    wrap(P.after, as, WRAP).forEach(function (ln) { rows.push({ words: ln, y: y, size: as, role: "after" }); y += as * 1.2; });
+    return { rows: rows, bottom: y };
+  }
+
+  var LAYOUT = [];
+  function layout() {
+    D.pages.forEach(function (P, pi) {
+      // chapter: circled number + label
+      var num = txt(pi, [{ text: String(pi + 1), start: P.chapterT, end: P.chapterT + 0.16 }], 136, 112, 112, { color: "var(--mark)" });
+      var lw = P.label.split(/\s+/).filter(Boolean), lstep = 0.36 / Math.max(1, lw.length);
+      var lab = txt(pi, lw.map(function (s, i) { return { text: s, start: P.chapterT + 0.1 + i * lstep, end: P.chapterT + 0.1 + (i + 1) * lstep }; }),
+        270, 118, 88, { color: "var(--ink2)" });
+      var chap = paths(pi, [loop(170, 168, 82, 78, 1.1, -2.2)], 12, "mk");
+
+      var k = 1, pl = planText(P, k);
+      while (pl.bottom > DOODLE_BOTTOM - DOODLE_MIN && k > 0.55) { k *= 0.94; pl = planText(P, k); }
+      var rows = pl.rows.map(function (r) {
+        return { role: r.role, o: txt(pi, r.words, r.role === "hero" ? 100 : LEFT, r.y, r.size,
+          { color: r.role === "after" ? "var(--ink2)" : "var(--ink)" }) };
+      });
+
+      // doodle fitted into the space under the text, bottom-aligned
+      var dz = DOODLES[P.doodle]();
+      var dg = document.createElementNS(NS, "g"); PG[pi].G.appendChild(dg);
+      var tmp = dz.strokes.map(function (s) { var p = document.createElementNS(NS, "path"); p.setAttribute("d", s[0]); dg.appendChild(p); return p; });
+      var bb = dg.getBBox();
+      tmp.forEach(function (p) { dg.removeChild(p); });
+      var top = Math.min(pl.bottom + 50, DOODLE_BOTTOM - 260), aw = 880, ah = DOODLE_BOTTOM - top;
+      var s = Math.min(1.25, aw / bb.width, ah / bb.height);
+      var tx = 100 + (aw - bb.width * s) / 2 - bb.x * s, ty = DOODLE_BOTTOM - bb.height * s - bb.y * s;
+      dg.setAttribute("transform", "translate(" + tx.toFixed(1) + " " + ty.toFixed(1) + ") scale(" + s.toFixed(4) + ")");
+      var xf = { s: s, tx: tx, ty: ty };
+      // bottom-first draw order: the lower frame gets ink from the page's first beat
+      var strokes = dz.strokes.slice().map(function (st, idx) { return { st: st, idx: idx }; });
+      var doodle = strokes.map(function (q) { return mk(dg, pi, q.st[0], q.st[1], q.st[2], xf); });
+      doodle.forEach(function (p) { var b = p.getBBox(); p._cy = b.y + b.height; });
+      var order = doodle.slice().sort(function (a, b) { return b._cy - a._cy; });
+      var logo = null;
+      if (dz.logo) {
+        logo = document.createElement("img"); logo.src = "assets/brand/keller-ai-logo.svg"; logo.alt = "";
+        logo.style.cssText = "position:absolute;border-radius:6px;left:" + (tx + dz.logo.x * s).toFixed(1) + "px;top:" +
+          (ty + dz.logo.y * s).toFixed(1) + "px;width:" + (dz.logo.s * s).toFixed(1) + "px;height:" + (dz.logo.s * s).toFixed(1) + "px";
+        PG[pi].el.appendChild(logo);
+      }
+      LAYOUT.push({ P: P, num: num, lab: lab, chap: chap, rows: rows, doodle: order, logo: logo, k: k });
+    });
+  }
+
+  // ---------- slam overlay (the sloppy bit) on the slam page ----------
+  var lgLines = [], slamMarks = [];
+  function lgLine(parent, s, x, y, size, rot, color) {
+    var d = document.createElement("div"); d.className = "t"; d.setAttribute("data-layout-allow-overlap", "");
+    d.style.left = x + "px"; d.style.top = y + "px"; d.style.fontSize = size + "px"; d.style.transform = "rotate(" + rot + "deg)";
+    d.style.color = color || "var(--ink)";
+    var gl = [];
+    for (var c = 0; c < s.length; c++) {
+      var g = document.createElement("span"); g.className = "g"; g.textContent = s[c] === " " ? " " : s[c];
+      var k = 0.86 + rnd() * 0.3;
+      g.style.fontSize = (size * k).toFixed(0) + "px";
+      g.style.transform = "translateY(" + j(size * 0.07).toFixed(1) + "px) rotate(" + j(9).toFixed(1) + "deg)";
+      d.appendChild(g); gl.push(g);
+    }
+    parent.appendChild(d); lgLines.push(gl); return gl;
+  }
+  function buildSlam() {
+    var S = D.slam; if (!S) return null;
+    var pi = S.page;
+    var LG = document.createElement("div"); LG.id = "lgtm"; PG[pi].el.appendChild(LG);
+    var SC = document.createElement("div"); SC.id = "scrim"; PG[pi].el.insertBefore(SC, LG);
+    var bigSize = Math.max(140, Math.min(372, 980 / (textW(S.big, 1, SLOPPY) * 1.12)));
+    var rows = [lgLine(LG, S.big, 40, 330, bigSize, -5)];
+    rows.push(lgLine(LG, S.bang, 150, 330 + bigSize + 40, 440, -3, "var(--mark)"));
+    var y = 1160;
+    (S.sub || []).slice(0, 2).forEach(function (ln, i) {
+      var sz = Math.max(96, Math.min(168, 900 / (textW(ln, 1, SLOPPY) * 1.12)));
+      rows.push(lgLine(LG, ln, i ? 260 : 90, y, sz, i ? 3 : -4)); y += sz + 2;
+    });
+    slamMarks = paths(pi, ["M120 1640 L200 1740 L380 1500", "M400 1660 L470 1750 L650 1520", "M690 1640 L770 1740 L960 1480",
+      "M870 330 L930 160 L990 330 L840 220 L1010 232 Z"], 20, "mk");
+    return { rows: rows, pi: pi };
+  }
+
+  // ---------- timeline ----------
+  function build() {
+    layout();
+    var SL = buildSlam();
+    if (SL) { // the slam marks live on top of the scrim: give them their own svg above it
+      var top = document.createElementNS(NS, "svg");
+      top.setAttribute("class", "ink"); top.setAttribute("viewBox", "0 0 1080 1920"); top.style.zIndex = 8;
+      var tg = document.createElementNS(NS, "g"); tg.setAttribute("filter", "url(#rough)"); top.appendChild(tg);
+      PG[SL.pi].el.appendChild(top);
+      slamMarks.forEach(function (p) { tg.appendChild(p); });
+    }
+    // measure glyph boxes now: fonts are loaded and no transform is applied yet
+    WRITES.forEach(function (o) {
+      var pr = PG[o.pi].el.getBoundingClientRect();
+      o.box = o.g.map(function (g) {
+        var r = g.getBoundingClientRect();
+        return { l: r.left - pr.left, r: r.right - pr.left, t: r.top - pr.top, b: r.bottom - pr.top, w: r.width };
+      });
+    });
+    function span(o) {
+      var L = 1e9, R = -1e9, T = 1e9, B = -1e9;
+      o.box.forEach(function (q) { L = Math.min(L, q.l); R = Math.max(R, q.r); T = Math.min(T, q.t); B = Math.max(B, q.b); });
+      return { l: L, r: R, t: T, b: B };
+    }
+
+    var tl = gsap.timeline({ paused: true });
+    var ease2 = gsap.parseEase("power2.inOut");
+    document.querySelectorAll(".pg .g").forEach(function (g) {
+      if (g.closest("#lgtm")) return;
+      gsap.set(g, { clipPath: "inset(-15% 100% -15% -8%)", visibility: "hidden" });
+    });
+    gsap.set("#strip", { y: 0 });
+
+    // each glyph appears on its own word: width-weighted wipe across the spoken span
+    function write(o) {
+      o.words.forEach(function (w) {
+        var tot = 0, k;
+        for (k = w.a; k < w.b; k++) tot += o.box[k].w + 14;
+        var t = w.t0, sp = Math.max(0.12, w.t1 - w.t0);
+        for (k = w.a; k < w.b; k++) {
+          var d = sp * (o.box[k].w + 14) / tot, q = o.box[k];
+          tl.set(o.g[k], { visibility: "visible" }, t);
+          tl.to(o.g[k], { clipPath: "inset(-15% -8% -15% -8%)", duration: Math.max(0.05, d * 1.1), ease: "none" }, t);
+          NIBSEG.push({ t0: t, t1: t + d, kind: "g", pi: o.pi, x0: q.l, x1: q.r, y: q.t + (q.b - q.t) * 0.72 });
+          t += d;
+        }
+      });
+    }
+    function draw(list, t, d, stag, nib) {
+      list.forEach(function (p, i) {
+        var ti = t + i * (stag || 0);
+        tl.set(p, { visibility: "visible" }, ti);
+        tl.to(p, { attr: { "stroke-dashoffset": 0 }, duration: d, ease: "power2.inOut" }, ti);
+        if (nib !== false) NIBSEG.push({ t0: ti, t1: ti + d, kind: "p", pi: p._pi, path: p, len: p.getTotalLength(), xf: p._xf });
+      });
+    }
+    function spread(list, t0, t1, dmax) { // strokes evenly across [t0, t1]
+      var n = list.length; if (!n) return;
+      var spanT = Math.max(0.2, t1 - t0), d = Math.min(dmax || 0.3, Math.max(0.08, spanT / n * 1.6));
+      var stag = n > 1 ? Math.max(0, (spanT - d) / (n - 1)) : 0;
+      draw(list, t0, d, stag);
+    }
+
+    // page transitions: anticipation, smear, eased settle (canonical)
+    var blur = { v: 0 };
+    var lens = document.getElementById("lens"), bnode = document.getElementById("vbBlur");
+    function trans(t, n) {
+      var base = -1920 * (n - 1), tgt = -1920 * n;
+      tl.to("#strip", { y: base + 34, duration: 0.09, ease: "power2.out" }, t);
+      tl.to("#strip", { y: tgt, duration: 0.46, ease: "expo.out" }, t + 0.09);
+      tl.set(lens, { filter: "url(#vb)" }, t + 0.06);
+      tl.to(blur, { v: 46, duration: 0.07, ease: "power1.out", onUpdate: function () { bnode.setAttribute("stdDeviation", "0 " + blur.v.toFixed(1)); } }, t + 0.09);
+      tl.to(blur, { v: 0, duration: 0.34, ease: "power2.out", onUpdate: function () { bnode.setAttribute("stdDeviation", "0 " + blur.v.toFixed(1)); } }, t + 0.16);
+      tl.set(lens, { filter: "none" }, t + 0.52);
+      tl.to("#cam", { scale: 0.955, rotation: n % 2 ? -0.9 : 0.9, duration: 0.14, ease: "sine.out" }, t + 0.09);
+      tl.to("#cam", { scale: 1.0, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, t + 0.23);
+      tl.set("#pg", { textContent: "p. " + (n + 1) }, t + 0.28);
+    }
+
+    tl.fromTo("#cam", { scale: 1.05, rotation: -0.6 }, { scale: 1.0, rotation: 0, duration: 0.9, ease: "power2.out" }, 0);
+
+    LAYOUT.forEach(function (L, pi) {
+      var P = L.P;
+      if (pi > 0) trans(P.trans, pi);
+      draw(L.chap, P.chapterT, 0.18, 0, false);
+      tl.fromTo(L.num.g[0], { scale: 1.6 }, { scale: 1, duration: 0.2, ease: "back.out(2)" }, P.chapterT);
+      write(L.num); write(L.lab);
+      L.rows.forEach(function (r) { write(r.o); });
+      // page 1 opens on highlighter swipes behind its first lines (canonical hl1)
+      if (pi === 0) {
+        var body = L.rows.filter(function (r) { return r.role === "body"; }).slice(0, 2);
+        var sw = body.map(function (r) { var q = span(r.o); return "M" + (q.l - 14).toFixed(0) + " " + ((q.t + q.b) / 2 + 6).toFixed(0) + " L" + (q.r + 14).toFixed(0) + " " + ((q.t + q.b) / 2 - 4).toFixed(0); });
+        draw(paths(0, sw, Math.round(L.rows[0].o.size * 1.05), "hl"), 0.0, 0.2, 0.05, false);
+      }
+      // hero emphasis in marker: circle or double underline
+      var heroes = L.rows.filter(function (r) { return r.role === "hero"; });
+      if (heroes.length) {
+        var q = { l: 1e9, r: -1e9, t: 1e9, b: -1e9 };
+        heroes.forEach(function (r) { var s = span(r.o); q.l = Math.min(q.l, s.l); q.r = Math.max(q.r, s.r); q.t = Math.min(q.t, s.t); q.b = Math.max(q.b, s.b); });
+        var lastHero = heroes[heroes.length - 1].o.words[0];
+        var te = Math.min(lastHero.t1, P.emphBy);
+        if (P.emph === "circle") {
+          var cx = (q.l + q.r) / 2, cy = q.t + (q.b - q.t) * 0.52, rx = Math.min(500, (q.r - q.l) / 2 + 58), ry = (q.b - q.t) * 0.5 + 6;
+          draw(paths(pi, [loop(cx, cy, rx, ry, 1.18, -2.6)], 12, "mk"), Math.max(lastHero.t0 + 0.12, te - 0.3), 0.42);
+        } else {
+          var y1 = q.b + 6, y2 = q.b + 46;
+          draw(paths(pi, ["M" + (q.l - 10).toFixed(0) + " " + (y1 + 20).toFixed(0) + " C " + (q.l + 230).toFixed(0) + " " + (y1 - 10).toFixed(0) + ", " + (q.r - 300).toFixed(0) + " " + (y1 + 4).toFixed(0) + ", " + (q.r + 20).toFixed(0) + " " + (y1 - 24).toFixed(0),
+            "M" + (q.l + 60).toFixed(0) + " " + (y2 + 12).toFixed(0) + " C " + (q.l + 320).toFixed(0) + " " + (y2 - 10).toFixed(0) + ", " + (q.r - 260).toFixed(0) + " " + y2.toFixed(0) + ", " + (q.r - 40).toFixed(0) + " " + (y2 - 18).toFixed(0)], 20, "mk"),
+            Math.max(lastHero.t0 + 0.1, te - 0.1), 0.2, 0.1, false);
+        }
+      }
+      spread(L.doodle, P.doodleT0, P.doodleT1, 0.3);
+      if (L.logo) {
+        tl.fromTo(L.logo, { autoAlpha: 0, scale: 1.4 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: "back.out(1.8)" }, P.logoT);
+      }
+    });
+
+    // the sloppy slam: scrim, big Comic Shanns stamp, "!!!", ticks and a star, shake
+    if (SL) {
+      var S = D.slam;
+      tl.set("#scrim", { visibility: "visible" }, S.t - 0.03);
+      tl.fromTo("#scrim", { opacity: 0 }, { opacity: 0.93, duration: 0.07, ease: "none" }, S.t - 0.03);
+      SL.rows.forEach(function (gl, li) {
+        var base = S.t + [0, 0.18, 0.32, 0.4][Math.min(li, 3)];
+        gl.forEach(function (g, i) {
+          tl.set(g, { visibility: "visible" }, base + i * 0.045);
+          tl.fromTo(g, { scale: 2.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.09, ease: "power3.out" }, base + i * 0.045);
+        });
+      });
+      draw(slamMarks, S.t + 0.1, 0.12, 0.07, false);
+      tl.fromTo("#lgtm", { x: 0, y: 0 }, { x: 6, y: -5, duration: 0.05, yoyo: true, repeat: 5, ease: "none" }, S.t + 0.02);
+    }
+
+    // the pen nib follows whatever is being written or drawn
+    var nib = document.getElementById("nib"), nibState = { t: 0 };
+    function nibAt(t) {
+      var best = null;
+      for (var i = 0; i < NIBSEG.length; i++) {
+        var s = NIBSEG[i];
+        if (t >= s.t0 - 0.01 && t <= s.t1 + 0.1 && (!best || s.t0 >= best.t0)) best = s;
+      }
+      if (!best || t >= D.endcard.start) { nib.style.opacity = "0"; return; }
+      var f = Math.max(0, Math.min(1, (t - best.t0) / Math.max(0.001, best.t1 - best.t0))), x, y;
+      if (best.kind === "g") { x = best.x0 + (best.x1 - best.x0) * f; y = best.y; }
+      else {
+        var pt = best.path.getPointAtLength(ease2(f) * best.len); x = pt.x; y = pt.y;
+        if (best.xf) { x = best.xf.tx + x * best.xf.s; y = best.xf.ty + y * best.xf.s; }
+      }
+      var fade = t > best.t1 ? 1 - (t - best.t1) / 0.1 : 1;
+      nib.style.transform = "translate(" + x.toFixed(1) + "px," + (y + best.pi * 1920 + (f > 0 && f < 1 ? j(1.2) : 0)).toFixed(1) + "px)";
+      nib.style.opacity = (0.92 * fade).toFixed(2);
+    }
+    tl.to(nibState, { t: END, duration: END, ease: "none", onUpdate: function () {
+      var n = Math.floor(nibState.t * 12);
+      document.getElementById("grain").style.transform = "translate(" + ((n * 37) % 40 - 20) + "px," + ((n * 61) % 40 - 20) + "px)";
+      nibAt(nibState.t);
+    } }, 0);
+
+    // shared end card (kit/endcard.js): hard cut 0.1 s after the last word, slow push through the hold
+    var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+    if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style J: data-duration " + END + " != end-card plan end " + plan.end);
+    var card = KAEndCard.mount({ tl: tl, root: document.getElementById("root"), start: plan.start, brand: D.brand });
+    tl.fromTo(card, { scale: 1 }, { scale: 1.04, duration: plan.end - plan.start, ease: "none" }, plan.start);
+    tl.set({}, {}, END);
+    window.__timelines["main"] = tl;
+  }
+
+  document.getElementById("footL").textContent = D.footer;
+  var faces = ["400 100px 'KS Virgil'", "400 100px 'KS Shanns'", "400 100px 'KS Lilita'"];
+  if (document.fonts && document.fonts.load) {
+    Promise.all(faces.map(function (f) { return document.fonts.load(f).catch(function () { return null; }); }))
+      .then(function () { return document.fonts.ready; }).then(build);
+  } else { build(); }
+})();
+</script>
+</body>
+</html>

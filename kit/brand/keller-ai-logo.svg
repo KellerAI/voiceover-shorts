@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">Keller AI logo</title>
+  <desc id="desc">A stylized white and gray K on a near-black square background.</desc>
+  <rect width="640" height="640" fill="#202020"/>
+  <path fill="#fff" d="M154 128h77v166l-77 91z"/>
+  <path fill="#fff" d="M154 414h77v98h-77z"/>
+  <path fill="#fff" d="M345 321 511 512h-95L296 376z"/>
+  <path fill="#8B9090" d="M400 128h89L154 512v-98z"/>
+</svg>

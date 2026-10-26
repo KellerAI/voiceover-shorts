@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style O: split-flap board, __O_TITLE__</title>
+<!--
+  Style O template, from the canonical look (read only). Instantiate with styles/O/build.py, which
+  writes the board plan (lines, the full flap op list, page dims, the jam, the payoff, the status
+  labels) into window.__O and the composition length into every data-duration. Do not edit an
+  instantiated copy by hand.
+
+  The look is unchanged in kind: a navy departures board, the brand as the station (K tile and
+  wordmark), DEPARTURES / board id, a NOW SHOWING / STATUS label row, a 12 x 6 grid of graphite
+  split-flap cells (80 x 180 px on an 85 / 198 px pitch) with hinged flaps (fold 0 -> -90 deg
+  power2.in, drop 90 -> 0 power2.out, back.out on the settle, blur and brightness fall-off while
+  turning), pages that overwrite in place with stale rows dimmed, the jammed-flap gag (yellow flap,
+  hot-pink tilted Comic Shanns lowercase, 1.75x push-in, shudder, row shake, stutter, snap back),
+  cream payoff tiles with a warm glow and stamp pulse, blue light pool, vignette, slow camera push
+  and seeded grain jittered at 15 fps.
+
+  Script-agnostic: every line, flip time and glyph comes from build.py's plan (the canonical
+  sched.js scheduler, ported to Python so the SFX use the same op list). The canonical in-board
+  lockup is replaced by the shared kit end card (kit/endcard.js), cut in 0.1 s after the last word
+  and held 2 s with a slow push so the hold never freezes.
+
+  Preflight fixes vs the canonical: every label renders >= 44 px at 1080 wide (NOW SHOWING / STATUS
+  30 -> 46 px, DEPARTURES 34 -> 46 px, footer 30 -> 46 px; the grid moves down 28 px to make room),
+  the tiles carry a solid colour under their gradient so the board fills the lower third from frame
+  one, the end card replaces the fade-up lockup, and the audio is one bus from kit/sfx_bus.py.
+  Moving flap halves are data-legibility="ignore": mid-turn they are foreshortened on purpose, and
+  the static halves under them always carry the same glyph at full size.
+
+  Fonts (D4): no system faces. DIN Condensed Bold -> Lilita One (bundled OFL), drawn at 140 px and
+  condensed to 60 % width per glyph so it fills the 80 px cell like the canonical's condensed face;
+  Avenir Next Condensed -> Lilita One; the jammed glyph stays Comic Shanns (bundled OFL).
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KFlap"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KLabel"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KBad"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+:root { --navy:#0F1B2D; --graphite:#202020; --cream:#FBF7F0; --grey:#8B9090; --mint:#8FD9A8; --amber:#F2B33D; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:1080px; height:1920px; overflow:hidden; background:var(--navy); }
+#root { position:relative; width:1080px; height:1920px; overflow:hidden; background:radial-gradient(110% 60% at 50% 38%, #17304f 0%, #0F1B2D 55%, #070d18 100%); }
+#cam { position:absolute; inset:0; transform-origin:540px 960px; }
+#board { position:absolute; inset:0; transform-origin:540px 960px; }
+#glow { position:absolute; left:-100px; top:400px; width:1280px; height:1300px; background:radial-gradient(50% 45% at 50% 48%, rgba(90,150,230,0.22), transparent 70%); }
+#glowEnd { position:absolute; left:-120px; top:1040px; width:1320px; height:620px; opacity:0; background:radial-gradient(50% 50% at 50% 50%, rgba(251,240,214,0.42), rgba(242,179,61,0.12) 55%, transparent 75%); }
+.cell { position:absolute; width:80px; height:180px; perspective:520px; border-radius:9px; box-shadow:0 10px 22px rgba(0,0,0,0.55); }
+.h { position:absolute; left:0; width:80px; height:90px; overflow:hidden; backface-visibility:hidden; }
+.h.t { top:0; border-radius:9px 9px 0 0; background:linear-gradient(#323232,#262626) #2c2c2c; transform-origin:50% 100%; }
+.h.b { top:90px; border-radius:0 0 9px 9px; background:linear-gradient(#202020,#171717) #1b1b1b; transform-origin:50% 0%; }
+.h.f.t { z-index:3; } .h.f.b { z-index:4; }
+.h span { display:block; width:80px; height:180px; line-height:180px; text-align:center; font-family:"KFlap"; font-weight:400; font-size:140px; color:#fff; text-shadow:0 0 26px rgba(190,215,255,0.30); white-space:nowrap; transform-origin:50% 50%; }
+.h.b span { margin-top:-90px; }
+.hinge { position:absolute; left:0; top:88px; width:80px; height:4px; background:#070a10; z-index:6; box-shadow:0 1px 0 rgba(255,255,255,0.07); }
+.pin { position:absolute; top:78px; width:4px; height:24px; background:#3a3a3a; z-index:7; border-radius:2px; }
+#hdr { position:absolute; left:34px; top:96px; width:1012px; height:180px; display:flex; align-items:center; gap:28px; }
+#hdr img { flex:none; width:150px; height:150px; border-radius:10px; }
+#station { flex:1 1 auto; min-width:0; font-family:"KFlap"; font-weight:400; font-size:120px; line-height:1; color:var(--cream); padding-top:8px; white-space:nowrap; text-shadow:0 0 30px rgba(190,215,255,0.28); }
+#dep { flex:none; text-align:right; font-family:"KLabel"; font-weight:400; color:var(--grey); font-size:46px; letter-spacing:0.06em; line-height:1.15; }
+#dep b { display:block; font-family:"KFlap"; font-weight:400; color:var(--cream); font-size:66px; letter-spacing:0.02em; }
+.lab { position:absolute; top:326px; font-family:"KLabel"; font-weight:400; font-size:46px; line-height:1; letter-spacing:0.1em; color:var(--grey); white-space:nowrap; }
+#stat { right:34px; text-align:right; }
+.rule { position:absolute; left:34px; width:1012px; height:2px; background:rgba(139,144,144,0.35); }
+#foot { position:absolute; left:34px; top:1650px; width:1012px; font-family:"KLabel"; font-weight:400; font-size:46px; line-height:1; letter-spacing:0.1em; color:var(--grey); display:flex; justify-content:space-between; white-space:nowrap; }
+#vig { position:absolute; left:-300px; top:-300px; width:1680px; height:2520px; background:radial-gradient(60% 50% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%); }
+#grain { position:absolute; inset:-60px; pointer-events:none; z-index:21; opacity:0.16; mix-blend-mode:overlay; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__O_DURATION__">
+  <div id="cam" data-layout-allow-occlusion><div id="board">
+    <div id="vig"></div><div id="glow"></div><div id="glowEnd"></div>
+    <div id="hdr">
+      <img id="tile" src="assets/brand/keller-ai-logo.svg" alt="">
+      <div id="station"></div>
+      <div id="dep"><span id="depLab"></span><b id="depId"></b></div>
+    </div>
+    <div class="rule" style="top:310px"></div>
+    <div class="lab" id="now" style="left:34px"></div>
+    <div class="lab" id="stat"></div>
+    <div id="grid"></div>
+    <div class="rule" style="top:1630px"></div>
+    <div id="foot"><span id="footL"></span><span id="footR"></span></div>
+  </div></div>
+  <div id="grain" data-layout-n data-layout-allow-occlusion></div>
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__O_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__O_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+window.__O = /*__O_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__O, FPS = 30;
+  var root = document.getElementById("root");
+  var END = parseFloat(root.getAttribute("data-duration"));
+  if (!D) throw new Error("style O: window.__O plan missing (instantiate with styles/O/build.py)");
+  var COLS = D.cols, ROWS = D.rows, CW = 80, PX = 85, PY = 198, X0 = 32, Y0 = 400;
+  var FS = 140, SX = 0.6;   // flap glyph size and horizontal condensing (Lilita One in an 80 px cell)
+  var H = D.header;
+  document.getElementById("station").textContent = H.name;
+  document.getElementById("depLab").textContent = H.departures;
+  document.getElementById("depId").textContent = H.board_id;
+  document.getElementById("now").textContent = H.now_showing;
+  document.getElementById("footL").textContent = H.footer[0];
+  document.getElementById("footR").textContent = H.footer[1];
+  var stat = document.getElementById("stat");
+  stat.textContent = H.status_prefix + "  " + D.status[0].text; stat.style.color = D.status[0].color;
+  if (D.brand && D.brand.logo) document.getElementById("tile").src = D.brand.logo;
+
+  var grid = document.getElementById("grid"), cells = [];
+  var HALF = '<span data-layout-allow-occlusion data-layout-allow-overlap></span>';
+  for (var r = 0; r < ROWS; r++) {
+    cells.push([]);
+    for (var c = 0; c < COLS; c++) {
+      var el = document.createElement("div"); el.className = "cell";
+      el.style.left = (X0 + c * PX) + "px"; el.style.top = (Y0 + r * PY) + "px";
+      el.innerHTML = '<div class="h t s" data-layout-allow-occlusion data-layout-allow-overlap>' + HALF + '</div>' +
+        '<div class="h b s" data-layout-allow-occlusion data-layout-allow-overlap>' + HALF + '</div>' +
+        '<div class="h t f" data-legibility="ignore" data-layout-allow-occlusion data-layout-allow-overlap>' + HALF + '</div>' +
+        '<div class="h b f" data-legibility="ignore" data-layout-allow-occlusion data-layout-allow-overlap>' + HALF + '</div>' +
+        '<div class="hinge"></div><div class="pin" style="left:-2px"></div><div class="pin" style="right:-2px"></div>';
+      grid.appendChild(el);
+      var hs = el.querySelectorAll(".h");
+      cells[r].push({ el: el, ts: hs[0], bs: hs[1], ft: hs[2], fb: hs[3] });
+    }
+  }
+  // film grain tile (seeded, deterministic)
+  (function () {
+    var cv = document.createElement("canvas"); cv.width = cv.height = 200; var g = cv.getContext("2d"), im = g.createImageData(200, 200), s = 7;
+    for (var i = 0; i < im.data.length; i += 4) { s = (s * 1103515245 + 12345) % 2147483648; var v = (s / 2147483648) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+    g.putImageData(im, 0, 0); document.getElementById("grain").style.backgroundImage = "url(" + cv.toDataURL() + ")";
+  })();
+
+  var F0 = "blur(0px) brightness(1)", F1 = "blur(5px) brightness(0.55)";
+  function sty(s) {
+    var bad = s.ff === "KBad";
+    return { color: s.color, fontFamily: s.ff, fontSize: (s.fs ? FS * s.fs : FS) + "px",
+             rotation: s.rot, scaleX: bad ? 1 : SX, scaleY: 1 };
+  }
+  // GSAP coerces a textContent of " " (and NBSP) to the number 0 (canonical notes.md:28): blanks are a zero-width space.
+  function tx(ch) { return ch === " " ? "​" : ch; }
+  function sp(h) { return h.firstChild; }
+  gsap.set(".h span", { scaleX: SX });
+
+  var tl = gsap.timeline({ paused: true });
+  gsap.set(".h.f.b", { rotationX: 0, transformPerspective: 520 });
+  gsap.set(".h.f.t", { rotationX: 0, transformPerspective: 520 });
+  var TI = D.tiles;
+  D.ops.forEach(function (o) {
+    var k = cells[o.r][o.c], f = sty(o.from), n = sty(o.to), t = o.t;
+    tl.set(sp(k.ts), Object.assign({ textContent: tx(o.to.ch) }, n), t);
+    tl.set(k.ts, { background: TI[o.to.tile][0] }, t);
+    tl.set(sp(k.ft), Object.assign({ textContent: tx(o.from.ch) }, f), t);
+    tl.set(k.ft, { background: TI[o.from.tile][0], rotationX: 0, filter: F0 }, t);
+    tl.set(sp(k.fb), Object.assign({ textContent: tx(o.to.ch) }, n), t);
+    tl.set(k.fb, { background: TI[o.to.tile][1], rotationX: 90, filter: F1 }, t);
+    tl.to(k.ft, { rotationX: -90, filter: F1, duration: o.d / 2, ease: "power2.in" }, t);
+    tl.to(k.fb, { rotationX: 0, filter: F0, duration: o.d / 2, ease: o.last ? "back.out(2.4)" : "power2.out" }, t + o.d / 2);
+    tl.set(sp(k.bs), Object.assign({ textContent: tx(o.to.ch) }, n), t + o.d);
+    tl.set(k.bs, { background: TI[o.to.tile][1] }, t + o.d);
+  });
+  // stale rows dim so the new line is the foreground
+  D.dims.forEach(function (d) {
+    var els = []; d.rows.forEach(function (r) { cells[r].forEach(function (k) { els.push(k.el); }); });
+    tl.to(els, { opacity: d.v, duration: 0.12, ease: "none" }, Math.max(0, d.t));
+  });
+  var m = D.jam;
+  if (m) {
+    var jk = cells[m.jamR][m.jamC];
+    var jx = X0 + m.jamC * PX + CW / 2, jy = Y0 + m.jamR * PY + 90;
+    // jam: push in on the cell, hold ~0.6 s, shake the row, flap stutters, then snap and release
+    tl.set("#board", { transformOrigin: jx + "px " + jy + "px" }, m.jamLand - 0.1);
+    tl.to("#board", { scale: 1.75, duration: 0.17, ease: "power3.out" }, m.jamLand - 0.03);
+    tl.to("#board", { keyframes: [{ x: -7, rotation: -0.5, duration: 0.05 }, { x: 6, rotation: 0.4, duration: 0.05 }, { x: -5, rotation: -0.3, duration: 0.05 }, { x: 4, rotation: 0.25, duration: 0.05 }, { x: -3, rotation: -0.15, duration: 0.05 }, { x: 2, rotation: 0.1, duration: 0.05 }, { x: 0, rotation: 0, duration: 0.05 }], ease: "none" }, m.jamLand + 0.2);
+    var rowEls = cells[m.jamR].map(function (k) { return k.el; });
+    tl.to(rowEls, { keyframes: [{ y: -6, duration: 0.04 }, { y: 5, duration: 0.04 }, { y: -4, duration: 0.04 }, { y: 3, duration: 0.04 }, { y: 0, duration: 0.04 }], ease: "none" }, m.jamLand + 0.34);
+    tl.to(jk.fb, { keyframes: [{ rotationX: 30, duration: 0.07 }, { rotationX: 0, duration: 0.07 }, { rotationX: 24, duration: 0.07 }, { rotationX: 0, duration: 0.07 }], ease: "power1.inOut" }, m.jamLand + 0.1);
+    tl.to("#board", { scale: 1.0, duration: 0.34, ease: "power2.inOut" }, m.snap - 0.02);
+  }
+  // header status label
+  D.status.forEach(function (s, i) {
+    if (i === 0) return;
+    tl.set(stat, { textContent: H.status_prefix + "  " + s.text, color: s.color }, s.t);
+  });
+  // payoff: glow behind the payoff rows, stamp pulse on the settle
+  var P = D.payoff, pr = P.rows;
+  var gy = Y0 + ((pr[0] + pr[pr.length - 1]) / 2) * PY + 90;
+  document.getElementById("glowEnd").style.top = (gy - 310) + "px";
+  tl.to("#glowEnd", { opacity: 1, duration: 0.5, ease: "power2.out" }, P.t + 0.1);
+  var endEls = []; pr.forEach(function (r) { cells[r].forEach(function (k) { endEls.push(k.el); }); });
+  tl.to(endEls, { keyframes: [{ scale: 1.05, duration: 0.1 }, { scale: 1, duration: 0.2 }], ease: "power2.out", transformOrigin: "50% 50%" }, P.settle);
+  // camera push (separate wrapper so it never fights the jam zoom)
+  tl.fromTo("#cam", { scale: 1.0 }, { scale: 1.03, duration: END, ease: "none" }, 0);
+  // grain jitter at 15 fps
+  for (var g = 0; g < END * 15; g++) tl.set("#grain", { x: ((g * 37) % 61) - 30, y: ((g * 53) % 47) - 23 }, g / 15);
+
+  // end card (kit/endcard.js) by a hard cut, then a slow push so the hold never freezes
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style O: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.set({}, {}, END);
+  window.__timelines["main"] = tl;
+
+  // The station wordmark shrinks to fit the header once the webfont has metrics (no tween depends on it).
+  function fitStation() {
+    var st = document.getElementById("station"), fs = 120;
+    st.style.fontSize = fs + "px";
+    while (st.scrollWidth > st.clientWidth + 1 && fs > 60) { fs -= 2; st.style.fontSize = fs + "px"; }
+  }
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('400 120px "KFlap"').then(fitStation, fitStation);
+  } else { fitStation(); }
+  window.__cues = { lines: D.lines.map(function (x) { return x.t; }), jam: m, payoff: P.t, endcard: plan.start };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style M: blueprint draft, __M_TITLE__</title>
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+/* D4: bundled OFL faces only; the canonical's system condensed, alternate and mono faces are swapped out. */
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Virgil"; font-weight: 300 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+:root { --navy: #0F1B2D; --navy2: #10243E; --cream: #FBF7F0; --red: #FF3B30; --yel: #FFE14D; --pink: #D6006F; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--navy); }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: radial-gradient(90% 60% at 50% 42%, #17335a 0%, #112340 45%, #0b1626 100%); }
+#gridsvg { position: absolute; left: 0; top: 0; transform-origin: 540px 960px; }
+#kick, #cam { position: absolute; inset: 0; }
+#cam { transform-origin: 540px 960px; }
+svg { position: absolute; left: 0; top: 0; }
+#ink { filter: drop-shadow(0 0 5px rgba(150,195,255,.42)); }
+.ln { fill: none; stroke: var(--cream); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.ln.thin { stroke-width: 2.4; opacity: .9; }
+.ln.bold { stroke-width: 4.5; }
+.lab { fill: var(--cream); opacity: 0; }
+.cond { font-family: "KS Lilita"; font-weight: 400; letter-spacing: 1px; }
+.mono { font-family: "KS Shanns"; font-weight: 700; font-size: 46px; letter-spacing: 0; }
+.tb { fill: var(--cream); }
+#sticky { position: absolute; left: 618px; top: 906px; width: 380px; height: 250px; background: var(--yel);
+  box-shadow: 0 20px 34px rgba(0,0,0,.5); padding: 26px 24px; opacity: 0; transform-origin: 50% 0%; }
+#sticky .t { font-family: "KS Shanns"; font-weight: 700; color: var(--pink); font-size: 50px; line-height: 1.05; white-space: nowrap; transform: rotate(-2deg); transform-origin: 0 50%; }
+#sticky .s { font-family: "KS Lilita"; color: #0e7a2c; font-size: 46px; margin-top: 12px; white-space: nowrap; transform: rotate(3deg); }
+#sticky .tape { position: absolute; left: 130px; top: -18px; width: 120px; height: 36px; background: rgba(255,255,255,.55); transform: rotate(-4deg); }
+#stamp { position: absolute; left: 610px; top: 612px; min-width: 400px; white-space: nowrap; padding: 12px 22px 4px; text-align: center; opacity: 0;
+  border: 7px solid var(--red); outline: 3px solid var(--red); outline-offset: 5px; color: var(--red); background: rgba(12,22,38,.9);
+  font-family: "KS Lilita"; font-size: 66px; line-height: 1; letter-spacing: 2px; box-shadow: 0 0 24px rgba(255,59,48,.4); }
+#vig { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(110% 75% at 50% 46%, rgba(0,0,0,0) 48%, rgba(3,8,16,.72) 100%); }
+#grain { position: absolute; inset: -40px; pointer-events: none; opacity: .10; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 300px 300px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__M_DURATION__">
+<svg id="gridsvg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <pattern id="g1" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#9fc4ff" stroke-opacity=".07" stroke-width="1"/></pattern>
+    <pattern id="g5" width="150" height="150" patternUnits="userSpaceOnUse" x="40" y="40"><path d="M150 0H0V150" fill="none" stroke="#9fc4ff" stroke-opacity=".16" stroke-width="1.3"/></pattern>
+  </defs>
+  <g id="grid" opacity="0"><rect x="-60" y="-60" width="1200" height="2040" fill="url(#g1)"/><rect x="-60" y="-60" width="1200" height="2040" fill="url(#g5)"/></g>
+</svg>
+<div id="kick"><div id="cam">
+<svg id="sheet" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <clipPath id="tileClip"><rect x="578" y="1636" width="92" height="92"/></clipPath>
+  </defs>
+  <rect id="kFill" x="80" y="1300" width="920" height="290" fill="#2a5fa8" opacity="0"/>
+  <g id="ink">
+  <!-- pre-printed title block: on the sheet from frame 0 (the lower third is never empty) -->
+  <path id="tblock" class="ln" d="M560 1880V1620H1040M560 1745H1040M880 1745V1880"/>
+  <g id="strokes"></g>
+
+  <!-- title: starts big in the middle of the sheet, then drops to a compact line at the top -->
+  <g id="t1"><text id="T1" class="cond" x="0" y="0" font-size="178" fill="#FBF7F0"></text></g>
+  <g id="t2"><text id="T2" class="cond" x="0" y="0" font-size="178" fill="#FBF7F0"></text></g>
+
+  <text id="L_head" class="lab mono" x="70" y="106"></text>
+  <text id="L_head2" class="lab mono" x="1010" y="106" text-anchor="end"></text>
+  <text id="L_brief" class="lab mono" x="960" y="330" text-anchor="end"></text>
+
+  <text id="L_A1" class="lab cond" x="260" y="560" font-size="64" text-anchor="middle"></text>
+  <text id="L_A2" class="lab mono" x="260" y="620" text-anchor="middle"></text>
+  <text id="L_dimA" class="lab mono" x="260" y="384" text-anchor="middle"></text>
+
+  <text id="L_B1" class="lab cond" x="820" y="545" font-size="64" text-anchor="middle"></text>
+  <text id="L_B2" class="lab mono" x="820" y="636" text-anchor="middle"></text>
+  <text id="L_chk" class="lab mono" x="540" y="500" text-anchor="middle"></text>
+  <text id="L_ok" class="lab mono" x="540" y="646" text-anchor="middle"></text>
+
+  <text id="L_bar" class="lab cond" x="540" y="824" font-size="52" text-anchor="middle"></text>
+  <text id="L_ind1" class="lab cond" x="100" y="962" font-size="70" text-anchor="start"></text>
+  <text id="L_ind2" class="lab cond" x="100" y="1110" font-size="170" text-anchor="start" style="fill:#FFE14D"></text>
+  <text id="L_fix" class="lab mono" x="516" y="1250" text-anchor="end"></text>
+
+  <text id="L_K1" class="lab cond" x="340" y="1405" font-size="92"></text>
+  <text id="L_K2" class="lab cond" x="340" y="1495" font-size="92"></text>
+  <text id="L_K3" class="lab mono" x="340" y="1562" style="fill:#FFE14D"></text>
+
+  <!-- title block contents (pre-printed) -->
+  <g id="tile" clip-path="url(#tileClip)">
+    <g transform="translate(578 1636) scale(0.14375)">
+      <rect width="640" height="640" fill="#202020"/>
+      <path fill="#fff" d="M154 128h77v166l-77 91z"/><path fill="#fff" d="M154 414h77v98h-77z"/>
+      <path fill="#fff" d="M345 321 511 512h-95L296 376z"/><path fill="#8B9090" d="M400 128h89L154 512v-98z"/>
+    </g>
+  </g>
+  <text id="L_word" class="tb cond" x="690" y="1702" font-size="54"></text>
+  <text id="L_tb2a" class="tb cond" x="580" y="1806" font-size="48"></text>
+  <text id="L_tb2b" class="tb cond" x="580" y="1860" font-size="48"></text>
+  <text id="L_rev" class="tb cond" x="960" y="1846" font-size="88" text-anchor="middle">A</text>
+  </g>
+
+  <g id="pen">
+    <circle r="19" fill="none" stroke="#FBF7F0" stroke-opacity=".4" stroke-width="1.8"/>
+    <path d="M-30 0H-12M12 0H30M0 -30V-12M0 12V30" stroke="#FBF7F0" stroke-opacity=".6" stroke-width="1.8"/>
+    <circle id="nib" r="7" fill="#FFE14D"/>
+  </g>
+</svg>
+<div id="sticky"><div class="tape"></div><div class="t" id="stk1"></div><div class="t" id="stk2"></div><div class="s" id="stks"></div></div>
+<div id="stamp"></div>
+</div></div>
+<div id="vig"></div>
+<div id="grain"></div>
+<audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__M_VO_DURATION__" data-volume="1"></audio>
+<audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__M_DURATION__" data-volume="1"></audio>
+</div>
+
+<script>
+window.__M = /*__M_DATA__*/null;
+(function () {
+  var D = window.__M;
+  var NS = "http://www.w3.org/2000/svg";
+  var END = parseFloat(document.getElementById("root").getAttribute("data-duration"));
+  var FPS = 30;
+  // Stroke geometry (the look); build.py supplies only the time and duration of each stroke.
+  var GEOM = {
+    border:   { cls: "bold", e: "power2.inOut", d: "M40 40H1040V1880H40Z", labs: [] },
+    headrule: { cls: "thin", e: "power2.out", d: "M40 128H1040", labs: ["L_head", "L_head2"] },
+    uline:    { cls: "bold", e: "power2.out", d: "M88 268H960", labs: ["L_brief"] },
+    boxA:     { cls: "bold", e: "power3.inOut", d: "M80 450H440V650H80Z", labs: ["L_A1", "L_A2"] },
+    dimA:     { cls: "thin", e: "power2.out", d: "M80 440V396M440 440V396M80 418H440M96 410L80 418L96 426M424 410L440 418L424 426", labs: ["L_dimA"] },
+    boxB:     { cls: "bold", e: "power3.inOut", d: "M640 450H1000V650H640Z", labs: ["L_B1", "L_B2"] },
+    arrAB:    { cls: "", e: "power2.out", d: "M440 520H640M624 511L640 520L624 529", labs: ["L_chk"] },
+    arrBA:    { cls: "thin", e: "power2.out", d: "M640 596H440M456 587L440 596L456 605", labs: ["L_ok"] },
+    drops:    { cls: "thin", e: "power2.out", d: "M260 650V760M820 650V760", labs: [] },
+    bar:      { cls: "", e: "power3.inOut", d: "M100 760H980V850H100Z", labs: ["L_bar"] },
+    lead:     { cls: "thin", e: "power2.out", d: "M100 890H500", labs: ["L_ind1", "L_ind2"] },
+    fix:      { cls: "", e: "power2.out", d: "M540 850V1300M531 1283L540 1300L549 1283", labs: ["L_fix"] },
+    boxK:     { cls: "bold", e: "power3.inOut", d: "M80 1300H1000V1590H80Z", labs: ["L_K1", "L_K2"] },
+    bank:     { cls: "bold", e: "power3.inOut", d: "M120 1425L210 1385L300 1425ZM140 1437V1507M210 1437V1507M280 1437V1507M120 1519H300", labs: [] },
+    seal:     { cls: "bold", e: "power3.inOut", d: "M210 1377A75 75 0 1 1 209.9 1377ZM172 1452L200 1482L252 1418", labs: [] }
+  };
+  // Max rendered width per text element; fonts shrink to a >= 46 px floor, then squeeze (textLength).
+  var FIT = {
+    L_head: [560, 46], L_head2: [360, 46], L_brief: [860, 46], L_A1: [330, 48], L_A2: [330, 46], L_dimA: [360, 46],
+    L_B1: [330, 48], L_B2: [330, 46], L_chk: [190, 46], L_ok: [190, 46], L_bar: [850, 48], L_ind1: [500, 52],
+    L_ind2: [480, 120], L_fix: [400, 46], L_K1: [630, 64], L_K2: [630, 64], L_K3: [630, 46], L_word: [330, 46],
+    L_tb2a: [285, 46], L_tb2b: [285, 46]
+  };
+
+  var root = document.getElementById("root");
+  var g = document.getElementById("strokes");
+  var pen = document.getElementById("pen");
+  var revEl = document.getElementById("L_rev");
+  var t1 = document.getElementById("t1"), t2 = document.getElementById("t2");
+  var T1 = document.getElementById("T1"), T2 = document.getElementById("T2");
+  var grain = document.getElementById("grain");
+  var labEl = {};
+
+  // copy
+  Object.keys(D.text).forEach(function (id) { var e = document.getElementById(id); if (e) e.textContent = D.text[id]; });
+  T1.textContent = D.title.lines[0] || ""; T2.textContent = D.title.lines[1] || "";
+  document.getElementById("stk1").textContent = D.sticky.lines[0] || "";
+  document.getElementById("stk2").textContent = D.sticky.lines[1] || "";
+  document.getElementById("stks").textContent = D.sticky.sign || "";
+  document.getElementById("stamp").textContent = D.stamp.text;
+
+  var S = D.strokes.map(function (s) {
+    var geo = GEOM[s.id];
+    if (!geo) throw new Error("style M: unknown stroke " + s.id);
+    return { id: s.id, t: s.t, dur: s.dur, cls: geo.cls, e: geo.e, d: geo.d, labs: geo.labs };
+  }).sort(function (a, b) { return a.t - b.t; });
+  S.forEach(function (s) {
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", s.d); p.setAttribute("class", "ln " + (s.cls || ""));
+    g.appendChild(p);
+    s.el = p; s.len = p.getTotalLength(); s.ease = gsap.parseEase(s.e);
+    p.style.strokeDasharray = s.len + " " + s.len;
+    p.style.strokeDashoffset = s.len;
+    s.start = p.getPointAtLength(0); s.end = p.getPointAtLength(s.len);
+    s.labs.forEach(function (id) { labEl[id] = document.getElementById(id); });
+  });
+
+  var REVS = D.revs;
+  var TI = D.title;                  // {lines, drop, rise}
+  var inOut = gsap.parseEase("power2.inOut");
+  var easeT = gsap.parseEase("power3.inOut");
+  var TW = { w1: 880, w2: 880, s: 0.48 };   // refined from measured widths once the fonts load
+
+  function clamp(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function lerp(a, b, k) { return a + (b - a) * k; }
+
+  function render(t) {
+    var penX = S[0].start.x, penY = S[0].start.y, drawing = false;
+    for (var i = 0; i < S.length; i++) {
+      var s = S[i], raw = (t - s.t) / s.dur, p = s.ease(clamp(raw));
+      s.el.style.strokeDashoffset = s.len * (1 - p);
+      var la = clamp((t - (s.t + s.dur)) / 0.08);
+      s.labs.forEach(function (id) {
+        var e = labEl[id]; e.style.opacity = la;
+        e.setAttribute("transform", "translate(0 " + ((1 - la) * -6).toFixed(2) + ")");
+      });
+      if (t >= s.t && raw <= 1) { var q = s.el.getPointAtLength(s.len * p); penX = q.x; penY = q.y; drawing = true; }
+    }
+    if (!drawing) {
+      var prev = null, next = null;
+      for (var j = 0; j < S.length; j++) { if (S[j].t + S[j].dur <= t) prev = S[j]; else if (S[j].t > t && !next) next = S[j]; }
+      var a = prev ? prev.end : (next ? next.start : S[0].start);
+      penX = a.x; penY = a.y;
+      if (next) {
+        var gs = next.t - 0.30, gp = inOut(clamp((t - gs) / 0.30));
+        if (!prev) gp = 1;
+        penX = a.x + (next.start.x - a.x) * gp; penY = a.y + (next.start.y - a.y) * gp;
+      }
+    }
+    pen.setAttribute("transform", "translate(" + penX.toFixed(2) + " " + penY.toFixed(2) + ") scale(" + (drawing ? 1 : 0.8) + ")");
+    pen.style.opacity = t < 0.04 ? 0 : (drawing ? 1 : 0.5);
+
+    // title: on screen from frame 0 (rises in over 0.4 s), drops to one compact line on its spoken word
+    var in1 = clamp((t + 0.15) / 0.40), in2 = clamp((t - 0.05) / 0.40);
+    var m1 = easeT(clamp((t - TI.drop) / 0.60)), m2 = easeT(clamp((t - TI.drop - 0.30) / 0.60));
+    var two = !!TI.lines[1];
+    var x1 = 88, y1 = lerp(two ? 760 : 850, 244, m1) + (1 - in1) * 26, s1 = lerp(TW.s0 || 1, TW.s, m1);
+    var x2 = lerp(88, 88 + TW.w1 * TW.s + 28, m2), y2 = lerp(935, 244, m2) + (1 - in2) * 26, s2 = lerp(TW.s0 || 1, TW.s, m2);
+    t1.setAttribute("transform", "translate(" + x1.toFixed(2) + " " + y1.toFixed(2) + ") scale(" + s1.toFixed(4) + ")");
+    t2.setAttribute("transform", "translate(" + x2.toFixed(2) + " " + y2.toFixed(2) + ") scale(" + s2.toFixed(4) + ")");
+    t1.style.opacity = 0.3 + 0.7 * in1; t2.style.opacity = 0.3 + 0.7 * in2;
+
+    // revision letter: crisp yellow pop on each tick, then settles to cream
+    var r = REVS[0];
+    for (var k = 0; k < REVS.length; k++) if (t >= REVS[k][0]) r = REVS[k];
+    revEl.textContent = r[1];
+    var kk = r[0] > 0 ? clamp((t - r[0]) / 0.45) : 1;
+    var sc = 1 + 0.55 * Math.pow(1 - kk, 2);
+    revEl.setAttribute("transform", "translate(960 1846) scale(" + sc.toFixed(3) + ") translate(-960 -1846)");
+    revEl.style.fill = kk < 1 ? "#FFE14D" : "#FBF7F0";
+
+    // paper grain: deterministic jitter at 12 fps
+    var f = Math.floor(t * 12);
+    grain.style.transform = "translate(" + (((f * 37) % 41) - 20) + "px," + (((f * 53) % 37) - 18) + "px)";
+  }
+
+  function fitText(el, maxW, floor) {
+    if (!el || !el.textContent) return;
+    var fs = parseFloat(el.getAttribute("font-size")) || parseFloat(getComputedStyle(el).fontSize);
+    el.removeAttribute("textLength"); el.removeAttribute("lengthAdjust");
+    var w = el.getComputedTextLength();
+    if (w > maxW && fs > floor) {
+      fs = Math.max(floor, Math.floor(fs * maxW / w));
+      el.setAttribute("font-size", fs); el.style.fontSize = fs + "px";
+      w = el.getComputedTextLength();
+    }
+    if (w > maxW) { el.setAttribute("textLength", maxW); el.setAttribute("lengthAdjust", "spacingAndGlyphs"); }
+  }
+  function fitHtml(el, maxW, floor) {
+    if (!el || !el.textContent) return;
+    var fs = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > maxW && fs > floor) { fs -= 2; el.style.fontSize = Math.max(floor, fs) + "px"; }
+  }
+  function doFit() {
+    Object.keys(FIT).forEach(function (id) { fitText(document.getElementById(id), FIT[id][0], FIT[id][1]); });
+    // big title: each line fits 900 px at full size; the compact top line fits 88..960 px
+    var w1 = T1.getComputedTextLength(), w2 = TI.lines[1] ? T2.getComputedTextLength() : 0;
+    var s0 = Math.min(1, 900 / Math.max(w1, w2, 1));
+    var s = Math.min(0.67, (872 - (w2 ? 28 : 0)) / Math.max(w1 + w2, 1));
+    TW = { w1: w1, w2: w2, s: s, s0: s0 };
+    ["stk1", "stk2", "stks"].forEach(function (id) { fitHtml(document.getElementById(id), 332, 46); });
+  }
+
+  var tl = gsap.timeline({ paused: true });
+  var prox = { t: 0 };
+  tl.to(prox, { t: END, duration: END, ease: "none", onUpdate: function () { render(prox.t); } }, 0);
+  tl.to("#grid", { opacity: 1, duration: 0.8, ease: "power1.out" }, 0);
+  // camera push-in, with the grid drifting slower behind the sheet (parallax)
+  tl.fromTo("#cam", { scale: 1.0, y: 0 }, { scale: 1.035, y: -14, duration: END, ease: "none" }, 0);
+  tl.fromTo("#gridsvg", { scale: 1.0, y: 0 }, { scale: 1.012, y: -4, duration: END, ease: "none" }, 0);
+  // sticky note slaps on (motion blur decays as it lands)
+  var ST = D.sticky.t;
+  tl.fromTo("#sticky", { opacity: 0, scale: 1.4, rotation: -14, y: -70, filter: "blur(16px)" },
+    { opacity: 1, scale: 1, rotation: 4, y: 0, filter: "blur(0px)", duration: 0.24, ease: "back.out(2)" }, ST);
+  tl.fromTo("#kick", { y: 0 }, { keyframes: [{ y: 7, duration: 0.05 }, { y: -3, duration: 0.07 }, { y: 0, duration: 0.09 }] }, ST + 0.18);
+  // stamp falls on box B, blur grows with speed then snaps sharp on impact
+  var SP = D.stamp.t;
+  tl.fromTo("#stamp", { opacity: 0, scale: 2.7, rotation: -3, filter: "blur(0px)" },
+    { opacity: 0.96, scale: 1, rotation: -9, filter: "blur(18px)", duration: 0.17, ease: "expo.in" }, SP - 0.17);
+  tl.set("#stamp", { filter: "blur(0px)" }, SP);
+  tl.fromTo("#kick", { x: 0 }, { keyframes: [{ x: 9, y: 6, duration: 0.04 }, { x: -6, y: -4, duration: 0.06 }, { x: 3, y: 2, duration: 0.07 }, { x: 0, y: 0, duration: 0.09 }] }, SP);
+  // payoff: panel fill, then the closing line on its spoken words, then a pulse on the last word
+  tl.to("#kFill", { opacity: 0.5, duration: 0.35, ease: "power2.out" }, D.kfill);
+  tl.fromTo("#L_K3", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, D.k3);
+  tl.to("#kFill", { opacity: 0.85, duration: 0.12, yoyo: true, repeat: 1, ease: "power1.out" }, D.pulse);
+
+  // end card (kit/endcard.js) by a hard cut, then a slow push so the hold never freezes
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style M: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.set({}, {}, END);
+  render(0);
+  // Registered synchronously: the HyperFrames runtime and the legibility seek bind at load.
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+  // Text fitting needs the webfonts' metrics; it changes no tween, so it runs once they load.
+  var faces = ["400 178px \"KS Lilita\"", "700 46px \"KS Shanns\""];
+  var refit = function () { doFit(); render(tl.time()); };
+  if (document.fonts && document.fonts.load) {
+    Promise.all(faces.map(function (f) { return document.fonts.load(f); })).then(refit, refit);
+  } else { refit(); }
+  window.__cues = { strokes: S.map(function (s) { return [s.id, s.t]; }), sticky: ST, stamp: SP, k3: D.k3, pulse: D.pulse, end: END };
+})();
+</script>
+</body>
+</html>

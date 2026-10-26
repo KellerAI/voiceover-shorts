@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style Q: Handheld LCD, __Q_TITLE__</title>
+<!--
+  Style Q template, from the canonical look (read only). Instantiate with styles/Q/build.py, which
+  writes the cue plan into window.__Q and the composition length into every data-duration. Do not
+  edit an instantiated copy by hand.
+
+  The look is unchanged in kind: a 1989-style dot-matrix handheld. The 112x192 LCD is a canvas drawn
+  at an exact 8x integer scale (896x1536, pixelated) inside a cream console shell with a navy screen
+  plate, LED, D-pad, A/B buttons, SELECT/START pills and the official K tile + wordmark. Only the
+  four LCD shades are drawn on screen (Bayer dithering for anything between), all screen type is
+  the 5x7 bitmap table, inversion is a palette flip, scene changes are 5-frame band wipes with
+  content on both sides, and every frame is a pure function of t (seek-safe LCD ghosting from t-1f
+  and t-2f, never across a hard cut).
+
+  Script-agnostic: build.py splits the words into five chapters and derives every cue time and
+  every line of screen copy from them; the menu items, the LGTM verdict and the model names are
+  default copy, overridable with --content.
+
+  Preflight fixes vs the canonical look:
+  - dead frames: the K tile bobs after it lands (the canonical boot froze 0.83-2.0 s), the menu
+    cursor steps at most every 0.4 s, and the floors in the check, verdict, slam and bank screens
+    scroll (the canonical slam screen froze 12.33-12.97 s);
+  - end card: the canonical in-LCD card started at 13.56 s, over the last words, and held 0.03 s
+    after the last word. It is replaced by the shared kit/endcard.js, cut in 0.1 s after the last
+    word and held 2 s, carrying the title and a blinking PRESS START (no frozen hold, and the lower
+    third is filled); the bank beat now runs to the card instead of being squeezed to 0.6 s;
+  - small type: the DOM console labels were 16-26 px (plate strip 26, SELECT/START 16, A/B 24). The
+    plate strip is now 44 px (the screen moved down 24 px to make room), A/B are 44 px printed on
+    the buttons, and the SELECT/START captions are dropped (the pills stay);
+  - motion: the slam word and the X-eyed robots shake, the ITEM GET key bobs, and the end card
+    pushes in slowly under the blinking PRESS START (the LCD floor shades are too close to count);
+  - loudness: one bus from kit/sfx_bus.py (voice at -14 LUFS, SFX 14 dB under the voice peak).
+  Fonts (D4): the canonical's Futura (local(), plate strip, wordmark, button labels) is swapped
+  for the bundled OFL Lilita One. Screen type is the bitmap table and needs no font.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #FBF7F0; }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: linear-gradient(180deg, #FFFDF8 0%, #FBF7F0 40%, #EAE3D6 100%); }
+/* console shell: cream body, navy screen plate, graphite controls */
+.plate { position: absolute; left: 40px; top: 40px; width: 1000px; height: 1664px; background: #0F1B2D;
+  border-radius: 28px 28px 150px 28px; box-shadow: 0 10px 0 #10243E inset, 0 6px 18px rgba(32,32,32,.45), 0 0 0 4px #202020; }
+.plate::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 18%); }
+.ptxt { position: absolute; left: 0; width: 1080px; top: 50px; text-align: center; font: 400 44px/1 "KS Lilita", sans-serif;
+  letter-spacing: 6px; color: #BFC6D1; white-space: nowrap; }
+.led { position: absolute; left: 66px; top: 62px; width: 20px; height: 20px; border-radius: 50%; background: #E5384F; box-shadow: 0 0 14px #E5384F; }
+.well { position: absolute; left: 76px; top: 108px; width: 928px; height: 1568px; background: #0A1208; border-radius: 10px;
+  box-shadow: 0 0 0 6px #202020, inset 0 0 30px #000; }
+#scr { position: absolute; left: 92px; top: 124px; width: 896px; height: 1536px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.grid { position: absolute; left: 92px; top: 124px; width: 896px; height: 1536px; pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(15,56,15,0.15) 0px, rgba(15,56,15,0.15) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 8px),
+    repeating-linear-gradient(180deg, rgba(15,56,15,0.15) 0px, rgba(15,56,15,0.15) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 8px); }
+.glass { position: absolute; left: 92px; top: 124px; width: 896px; height: 1536px; pointer-events: none;
+  background: linear-gradient(160deg, rgba(255,255,230,0.11) 0%, rgba(255,255,230,0) 30%, rgba(0,0,0,0) 72%, rgba(15,56,15,0.10) 100%);
+  box-shadow: inset 0 0 50px rgba(15,56,15,0.55), inset 0 0 0 6px rgba(15,56,15,0.22); }
+.dpad { position: absolute; left: 130px; top: 1718px; width: 190px; height: 190px; }
+.dpad i { position: absolute; background: #202020; border-radius: 12px; box-shadow: 0 5px 0 #0c0c0c; }
+.dpad .h { left: 0; top: 66px; width: 190px; height: 58px; } .dpad .v { left: 66px; top: 0; width: 58px; height: 190px; }
+.dpad .c { left: 78px; top: 78px; width: 34px; height: 34px; border-radius: 50%; background: #2c2c2c; box-shadow: inset 0 3px 6px #000; }
+.ab { position: absolute; left: 690px; top: 1700px; width: 300px; height: 212px; }
+.ab .bar { position: absolute; left: 14px; top: 60px; width: 264px; height: 108px; border-radius: 54px; background: #E4DCCB; transform: rotate(-24deg); box-shadow: inset 0 3px 6px rgba(0,0,0,.2); }
+.ab .b { position: absolute; width: 96px; height: 96px; border-radius: 50%; background: #D3224B; box-shadow: 0 6px 0 #8f1431, inset 0 -6px 10px rgba(0,0,0,.25);
+  display: flex; align-items: center; justify-content: center; font: 400 44px/1 "KS Lilita", sans-serif; color: #FBF7F0; }
+.logo { position: absolute; left: 0; width: 1080px; top: 1756px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+.logo .wm { font: 400 54px/1 "KS Lilita", sans-serif; color: #202020; letter-spacing: 1px; }
+.pill { position: absolute; top: 1872px; width: 96px; height: 24px; border-radius: 12px; background: #8B9090; transform: rotate(-24deg); box-shadow: 0 3px 0 #60665f; }
+.ec-title { margin-top: 64px; font: 400 80px/1.1 "KS Lilita", sans-serif; letter-spacing: 3px; text-align: center; max-width: 92%; }
+.ec-press { position: absolute; left: 0; width: 100%; top: 1620px; text-align: center; font: 400 64px/1 "KS Lilita", sans-serif; letter-spacing: 6px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__Q_DURATION__">
+  <div class="plate"></div><div class="led"></div><div class="ptxt">__Q_PLATE__</div>
+  <div class="well"></div>
+  <canvas id="scr" width="112" height="192"></canvas>
+  <div class="grid"></div>
+  <div class="glass"></div>
+  <div class="dpad"><i class="h"></i><i class="v"></i><i class="c"></i></div>
+  <div class="logo">
+    <svg width="84" height="84" viewBox="0 0 640 640"><rect width="640" height="640" rx="70" fill="#202020"/><path fill="#fff" d="M154 128h77v166l-77 91z"/><path fill="#fff" d="M154 414h77v98h-77z"/><path fill="#fff" d="M345 321 511 512h-95L296 376z"/><path fill="#8B9090" d="M400 128h89L154 512v-98z"/></svg>
+    <div class="wm">__Q_WORDMARK__</div>
+  </div>
+  <div class="pill" style="left:420px"></div><div class="pill" style="left:560px"></div>
+  <div class="ab"><div class="bar"></div><div class="b" style="left:12px;top:78px">B</div><div class="b" style="left:176px;top:20px">A</div></div>
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__Q_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__Q_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+window.__Q = /*__Q_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__Q, FPS = 30;
+  var root = document.getElementById("root");
+  var END = parseFloat(root.getAttribute("data-duration")), W = 112, H = 192;
+  var cv = document.getElementById("scr"), out = cv.getContext("2d", { willReadFrequently: true });
+  // four LCD shades, lightest first. Nothing else is ever drawn on the screen.
+  var PAL = [[155, 188, 15], [139, 172, 15], [48, 98, 48], [15, 56, 15]];
+  var PS = PAL.map(function (p) { return "rgb(" + p + ")"; });
+  var INV = 0; // inversion flag (palette flip)
+  function S(i) { i = INV ? 3 - i : i; return PS[Math.max(0, Math.min(3, i))]; }
+
+  function mkbuf() { var b = document.createElement("canvas"); b.width = W; b.height = H; var x = b.getContext("2d", { willReadFrequently: true }); x.imageSmoothingEnabled = false; return x; }
+  var BUF = [mkbuf(), mkbuf(), mkbuf()], TMP = mkbuf();
+  var c = BUF[0];
+
+  function cl(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function k(t, a, b) { return cl((t - a) / (b - a)); }
+  function eo(x) { return 1 - Math.pow(1 - x, 3); }
+  function back(x) { var s = 1.7; x = x - 1; return x * x * ((s + 1) * x + s) + 1; }
+  function hash(n) { n = Math.sin(n * 127.1 + 311.7) * 43758.5453; return n - Math.floor(n); }
+  function R(x, y, w, h, i) { c.fillStyle = S(i); c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+  var BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function bay(x, y) { return (BAY[(y & 3) * 4 + (x & 3)] + 0.5) / 16; }
+  function dith(x, y, w, h, a, b, v) { for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) { var X = x + xx, Y = y + yy; R(X, Y, 1, 1, bay(X, Y) < v ? b : a); } }
+
+  // depth: base shade 1, dithered lightest glow behind the hero (cx,cy,gr), dithered dark vignette at the edges
+  var BGC = {};
+  function bgd(cx, cy, gr) {
+    var key = cx + "," + cy + "," + gr, L = BGC[key];
+    if (!L) { L = []; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var d = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)), g = gr > 0 ? 1 - d / gr : -1, b = bay(x, y);
+      var rx = (x - W / 2) / (W / 2), ry = (y - H / 2) / (H / 2), v = cl((rx * rx + ry * ry - 0.55) / 0.85);
+      if (g > 0 && b < g * 1.25) L.push([x, y, 0]); else if (b < v) L.push([x, y, 2]); }
+      BGC[key] = L; }
+    R(0, 0, W, H, 1);
+    for (var q = 0; q < L.length; q++) R(L[q][0], L[q][1], 1, 1, L[q][2]);
+  }
+
+  // 5x7 bitmap glyph table (the canonical's, from K16)
+  var G = {
+    A:"01110100011000111111100011000110001",B:"11110100011000111110100011000111110",C:"01110100011000010000100001000101110",
+    D:"11110100011000110001100011000111110",E:"11111100001000011110100001000011111",F:"11111100001000011110100001000010000",
+    G:"01110100011000010111100011000101111",H:"10001100011000111111100011000110001",I:"01110001000010000100001000010001110",
+    J:"00111000100001000010000101001001100",K:"10001100101010011000101001001010001",L:"10000100001000010000100001000011111",
+    M:"10001110111010110101100011000110001",N:"10001100011100110101100111000110001",O:"01110100011000110001100011000101110",
+    P:"11110100011000111110100001000010000",Q:"01110100011000110001101011001001101",R:"11110100011000111110101001001010001",
+    S:"01111100001000001110000010000111110",T:"11111001000010000100001000010000100",U:"10001100011000110001100011000101110",
+    V:"10001100011000110001100010101000100",W:"10001100011000110101101011010101010",X:"10001100010101000100010101000110001",
+    Y:"10001100010101000100001000010000100",Z:"11111000010001000100010001000011111",
+    "0":"01110100011001110101110011000101110","1":"00100011000010000100001000010001110","2":"01110100010000100010001000100011111",
+    "3":"11111000100010000010000011000101110","4":"00010001100101010010111110001000010","5":"11111100001111000001000011000101110",
+    "6":"00110010001000011110100011000101110","7":"11111000010001000100010000100001000","8":"01110100011000101110100011000101110",
+    "9":"01110100011000101111000010001001100",".":"00000000000000000000000000110001100",":":"00000011000110000000011000110000000",
+    "!":"00100001000010000100001000000000100","?":"01110100010000100010001000000000100","-":"00000000000000011111000000000000000",
+    "+":"00000001000010011111001000010000000","%":"11000110010001000100010001001100011","'":"00100001000100000000000000000000000",
+    "/":"00001000100001000100010000100010000",">":"01000001000001000001000100010001000",",":"00000000000000000000011000010001000",
+    "=":"00000000001111100000111110000000000",")":"10000010000010000100001000100010000","#":"01010010101111101010111110101001010"," ":"00000000000000000000000000000000000"
+  };
+  G["$"] = "00100" + "01111" + "10100" + "01110" + "00101" + "11110" + "00100";
+  function tw(s, sc) { return s.length * 6 * sc - sc; }
+  function fit(s, maxW, maxSc) { for (var sc = maxSc; sc > 1; sc--) if (tw(s, sc) <= maxW) return sc; return 1; }
+  function glyph(g, x, y, sc, i, sy) { sy = sy || sc; c.fillStyle = S(i);
+    for (var r = 0; r < 7; r++) for (var q = 0; q < 5; q++) if (g[r * 5 + q] === "1") c.fillRect(Math.round(x + q * sc), Math.round(y + r * sy), sc, sy); }
+  function text(s, x, y, sc, i, o) {
+    o = o || {}; var sy = o.sy || sc;
+    if (x === "c") x = Math.round((W - tw(s, sc)) / 2);
+    var n = o.n === undefined ? s.length : o.n;
+    for (var j = 0; j < Math.min(n, s.length); j++) {
+      var g = G[s[j]] || G["?"], gx = x + j * 6 * sc;
+      if (o.sh !== undefined) glyph(g, gx + Math.max(1, sc >> 1), y + Math.max(1, sy >> 1), sc, o.sh, sy);
+      glyph(g, gx, y, sc, i, sy);
+    }
+  }
+  // THE GAG: gleefully sloppy hand. A drunk baseline, uneven spacing, tall/short glyphs, smudged
+  // shadow print, drips and blots. Glyph pixels stay big enough to read. Boils at 4 fps.
+  function sloppy(s, x, y, sc, t, seed, adv) {
+    var f = Math.floor(t * 4), cx = x;
+    for (var j = 0; j < s.length; j++) {
+      var h1 = hash(seed + j * 3.1 + f * 0.37), h2 = hash(seed * 2 + j * 7.7 + f * 0.11);
+      var scy = sc + (h2 > .7 ? 1 : 0), by = Math.round(Math.sin(j * 1.9 + seed) * sc * 1.1 + (h1 - .5) * 2);
+      var g = G[s[j]] || G["?"];
+      glyph(g, cx + 1, y + by + 1, sc, 1, scy);
+      glyph(g, cx, y + by, sc, 3, scy);
+      if (h2 > .6 && s[j] !== " ") R(cx + Math.floor(h1 * 3) * sc, y + by + 7 * scy, sc, 3 + Math.floor(h2 * 4), 3);
+      cx += adv + Math.round((h1 - .5) * 2);
+    }
+  }
+  function sloppyLine(s, y, t, seed) { // size and spacing by length so every verdict fits the bubble
+    var sc = s.length <= 6 ? 3 : s.length <= 8 ? 2 : 1, adv = sc === 3 ? 17 : sc === 2 ? 12 : 6;
+    sloppy(s, Math.max(3, Math.round((W - s.length * adv) / 2)), y, sc, t, seed, adv);
+  }
+
+  function box2(x, y, w, h, fill) { R(x, y, w, h, 3); R(x + 2, y + 2, w - 4, h - 4, fill === undefined ? 0 : fill); }
+  function arrow(x, y, i) { for (var r = 0; r < 7; r++) { var w = r < 4 ? r + 1 : 7 - r; R(x, y + r, w, 1, i === undefined ? 3 : i); } }
+  function barrow(x, y, i) { for (var r = 0; r < 14; r++) R(x, y + r, r < 7 ? r + 1 : 14 - r, 1, i); }
+  function sparkle(x, y, s, i) { R(x - s, y, s * 2 + 1, 1, i); R(x, y - s, 1, s * 2 + 1, i); }
+  function typed(t0, t, cps) { return Math.max(0, Math.floor((t - t0) * (cps || 30))); }
+  function scaled(x, y, m, fn) { var T = c.getTransform(); c.setTransform(T.a * m, 0, 0, T.d * m, T.e + x * T.a, T.f + y * T.d); fn(); c.setTransform(T); }
+
+  // ---------- K tile from the official SVG paths, quantised to LCD shades ----------
+  var KT = (function () {
+    var n = 48, b = document.createElement("canvas"); b.width = n; b.height = n; var g = b.getContext("2d");
+    g.scale(n / 640, n / 640); g.fillStyle = "#202020"; g.fillRect(0, 0, 640, 640);
+    g.fillStyle = "#fff"; g.fill(new Path2D("M154 128h77v166l-77 91z")); g.fill(new Path2D("M154 414h77v98h-77z")); g.fill(new Path2D("M345 321 511 512h-95L296 376z"));
+    g.fillStyle = "#8B9090"; g.fill(new Path2D("M400 128h89L154 512v-98z"));
+    var d = g.getImageData(0, 0, n, n).data, m = [];
+    for (var i = 0; i < n * n; i++) { var L = d[i * 4]; m.push(L > 190 ? 0 : L > 100 ? 1 : 3); }
+    return { n: n, m: m };
+  })();
+  function ktile(x, y) { for (var i = 0; i < KT.m.length; i++) R(x + (i % KT.n), y + Math.floor(i / KT.n), 1, 1, KT.m[i]); }
+
+  // ---------- chunky robot sprite (30x44 art px) ----------
+  function robot(x, y, o) {
+    o = o || {}; x = Math.round(x); y = Math.round(y);
+    if (o.sc) { var T = c.getTransform(); c.setTransform(T.a * o.sc, 0, 0, T.d * o.sc, T.e + x * T.a, T.f + y * T.d); var o2 = Object.assign({}, o); o2.sc = 0; robot(0, 0, o2); c.setTransform(T); return; }
+    R(x + 14, y, 2, 4, 3); R(x + 13, y - 3, 4, 3, 2);
+    R(x + 3, y + 4, 24, 16, 3); R(x + 4, y + 5, 22, 14, 1); R(x + 4, y + 5, 22, 2, 0);
+    R(x + 6, y + 8, 18, 9, 3);
+    var e = o.eyes || "n";
+    if (e === "n") { R(x + 9, y + 10, 3, 4, 0); R(x + 18, y + 10, 3, 4, 0); }
+    if (e === "smug") { R(x + 8, y + 12, 5, 2, 0); R(x + 17, y + 12, 5, 2, 0); R(x + 8, y + 11, 5, 1, 2); R(x + 17, y + 11, 5, 1, 2); }
+    if (e === "wide") { R(x + 8, y + 9, 5, 6, 0); R(x + 17, y + 9, 5, 6, 0); R(x + 10, y + 11, 2, 2, 3); R(x + 19, y + 11, 2, 2, 3); }
+    if (e === "x") { for (var q = 0; q < 5; q++) { R(x + 8 + q, y + 10 + q, 1, 1, 0); R(x + 12 - q, y + 10 + q, 1, 1, 0); R(x + 17 + q, y + 10 + q, 1, 1, 0); R(x + 21 - q, y + 10 + q, 1, 1, 0); } }
+    R(x + 12, y + 20, 6, 2, 3);
+    R(x + 5, y + 22, 20, 14, 3); R(x + 6, y + 23, 18, 12, 2); R(x + 6, y + 23, 18, 2, 1);
+    R(x + 10, y + 25, 10, 9, 0); if (o.letter) text(o.letter, x + 13, y + 26, 1, 3);
+    if (o.armUp) { R(x + 25, y + 12, 4, 12, 3); R(x + 26, y + 13, 2, 10, 1); } else { R(x + 25, y + 23, 4, 11, 3); R(x + 26, y + 24, 2, 9, 1); }
+    R(x + 1, y + 23, 4, 11, 3); R(x + 2, y + 24, 2, 9, 1);
+    R(x + 8, y + 36, 5, 8, 3); R(x + 17, y + 36, 5, 8, 3); R(x + 6, y + 42, 8, 2, 3); R(x + 16, y + 42, 8, 2, 3);
+    if (o.sweat) { R(x + 28, y + 6, 2, 3, 2); R(x + 29, y + 9, 1, 1, 2); }
+  }
+  // scrolling checker floor (sc = scroll); every screen with a floor scrolls it, so no screen freezes
+  function floor(y0, sc) {
+    R(0, y0, W, 2, 3);
+    for (var yy = y0 + 2; yy < H; yy++) { var row = yy - y0, cw = 6 + row; for (var xx = 0; xx < W; xx++) { var u = Math.floor((xx - W / 2) * 8 / cw + sc + 100) & 1, v = Math.floor(row * 0.25) & 1; R(xx, yy, 1, 1, (u ^ v) ? 1 : 0); } }
+  }
+  function magRaw() {
+    for (var a = 0; a < 24; a++) { var an = a / 24 * Math.PI * 2; R(Math.round(Math.cos(an) * 7), Math.round(Math.sin(an) * 7), 2, 2, 3); }
+    dith(-5, -5, 10, 10, 0, 1, .3); R(-3, -4, 2, 2, 0);
+    for (var h = 0; h < 8; h++) R(6 + h, 6 + h, 3, 3, 3);
+  }
+  function paperRaw(scrawl, t) { R(0, 0, 20, 24, 3); R(1, 1, 18, 22, 0); R(14, 1, 5, 5, 1);
+    for (var l = 0; l < 5; l++) { var len = 6 + Math.floor(hash(l * 5 + (scrawl ? Math.floor(t * 4) : 0)) * 9); R(3, 5 + l * 4, len, 2, 2); } }
+  function plate(s, x, y) { R(x, y, 46, 11, 3); text(s, x + 3, y + 2, 1, 0); }
+  function bankDraw(x, y, label) { // 104 wide x 74 tall: pediment, frieze with the label, columns, steps
+    for (var r = 0; r < 20; r++) { var w = Math.round(104 * (r + 1) / 20); R(x + 52 - w / 2, y + r, w, 1, 3); }
+    for (var r2 = 4; r2 < 18; r2++) { var w2 = Math.round(88 * (r2 - 1) / 20); R(x + 52 - w2 / 2, y + r2, w2, 1, 1); }
+    R(x + 2, y + 20, 100, 20, 3);
+    var ls = fit(label, 96, 2); text(label, x + 52 - Math.round(tw(label, ls) / 2), y + 30 - Math.round(7 * ls / 2), ls, 0);
+    R(x + 2, y + 40, 100, 3, 2);
+    for (var q = 0; q < 5; q++) { var cx = x + 8 + q * 19; R(cx, y + 43, 10, 22, 3); R(cx + 1, y + 43, 3, 22, 0); R(cx + 5, y + 43, 3, 22, 1); }
+    R(x + 0, y + 65, 104, 4, 3); R(x - 4, y + 69, 112, 5, 3);
+  }
+  function titleLines(y0, gap, i, o) { // the title, 2x where it fits, else 1x, centred
+    var L = D.title.lines;
+    for (var j = 0; j < L.length; j++) { var sc = fit(L[j], 108, 2); text(L[j], "c", y0 + j * gap + (sc === 1 ? 4 : 0), sc, i, o); }
+  }
+
+  // ========================== SCENES ==========================
+  var B = D.boot, M = D.menu, TI = D.title, BA = D.battle, CH = D.check, V = D.verdict, NT = D.nots, BK = D.bank;
+  function sc_boot(t) {
+    bgd(56, 80, 70);
+    var s = eo(k(t, 0, 0.7)), bob = t > 0.7 ? (Math.floor(t * 3) & 1) : 0, ky = Math.round(26 + s * 22) + bob;
+    R(35, ky + 3, 48, 48, 2); ktile(32, ky);
+    var bs = fit(D.brandName, 108, 2); text(D.brandName, "c", ky + 58 - bob, bs, 3, { sh: 2 });
+    if (t < B.loadT) { var pr = k(t, 0.1, B.loadT); R(14, 138, 84, 10, 3); R(16, 140, 80, 6, 0); R(16, 140, Math.round(80 * pr), 6, 3);
+      text("LOADING", "c", 154, 1, 3); }
+    else { var s1 = k(t, B.loadT, B.loadT + 0.34); sparkle(20, ky + 2, Math.round(3 * (1 - s1)) + 1, 3); sparkle(94, ky + 44, Math.round(3 * s1) + 1, 3);
+      text(B.line, "c", 140, fit(B.line, 108, 2), 3, { sh: 2 }); R(16, 160, 80, 2, 3); }
+  }
+  function sc_menu(t) {
+    bgd(56, 96, 60);
+    box2(0, 4, W, 24, 0); text(M.head, "c", 12, 1, 3);
+    R(0, 34, W, 2, 3); R(0, 148, W, 2, 3);
+    var n = 0; for (var q = 0; q < M.steps.length; q++) if (t >= M.steps[q]) n++;
+    var cur = n >= M.steps.length ? 3 : n % 3, blink = cur === 3 && (Math.floor((t - TI.selT) * 8) & 1);
+    M.items.forEach(function (s, j) { var yy = 40 + j * 22, sel = cur === j, sc = fit(s, 94, 2);
+      if (sel) { R(0, yy, W, 18, 3); arrow(4, yy + 5, 0); text(s, 14, yy + 2, sc, 0); } else text(s, 14, yy + 2, sc, 3); });
+    if (cur === 3) R(0, 106, W, 36, blink ? 2 : 3);
+    titleLines(108, 16, cur === 3 ? 0 : 3);
+    text("A:SELECT B:BACK", "c", 157, 1, 3);
+    R(10, 168, 92, 20, 3); R(12, 170, 88, 16, 0); R(16, 172, 12, 12, 3); text("K", 19, 175, 1, 0); text(D.brandName.slice(0, 11), 34, 175, 1, 3);
+  }
+  function sc_title(t) {
+    var T = TI.t, a = back(k(t, T, T + 0.26)), b2 = back(k(t, T + 0.14, T + 0.42));
+    bgd(56, 100, 66);
+    box2(0, 4, W, 24, 0); text(TI.head, "c", 12, 1, 3);
+    box2(0, 40, W, 112, 0);
+    text(TI.label, "c", 54, 1, 2);
+    var L = D.title.lines;
+    if (L[0]) { var s0 = fit(L[0], 108, 2); text(L[0], "c", Math.round(-30 + a * 104), s0, 3, { sh: 1 }); }
+    if (L[1]) { var s1 = fit(L[1], 108, 2); text(L[1], "c", Math.round(200 - b2 * 106), s1, 3, { sh: 1 }); }
+    R(8, 118, 96, 2, 3); var bs = D.brandName; text(bs, "c", 128, 1, 2);
+    for (var s = 0; s < 4; s++) { var ph = Math.floor(t * 6 + s * 1.7) % 4; sparkle([10, 100, 14, 98][s], [52, 56, 142, 138][s], ph < 2 ? ph + 2 : 0, 3); }
+    if ((Math.floor(t * 3) & 1) || t < T + 0.44) text(D.press, "c", 166, 1, 3);
+  }
+  function sc_battle(t) {
+    var T = BA.t;
+    bgd(70, 58, 62);
+    var e = k(t, T, T + 0.6), en = Math.round((1 - eo(e)) * 80);
+    var cx = 72 + en, cy = 48, ang = Math.floor(t * 6) / 8 * Math.PI * 2;
+    for (var d = 0; d < 32; d += 2) { var an = d / 32 * Math.PI * 2; R(cx + Math.round(Math.cos(an) * 24), cy + Math.round(Math.sin(an) * 16), 2, 2, 2); }
+    for (var sx = -30; sx <= 30; sx++) R(cx + sx, 94 + Math.round(Math.abs(sx) / 8), 1, 2, (sx & 1) ? 2 : 3);
+    [0, Math.PI].forEach(function (o2) { var hx = cx + Math.round(Math.cos(ang + o2) * 24) - 15, hy = cy + Math.round(Math.sin(ang + o2) * 16) - 12;
+      R(hx, hy, 30, 24, 3); R(hx + 2, hy + 2, 26, 20, 1); R(hx + 2, hy + 2, 26, 3, 0); R(hx + 5, hy + 6, 20, 11, 3); R(hx + 8, hy + 8, 3, 5, 0); R(hx + 19, hy + 8, 3, 5, 0); R(hx + 13, hy - 5, 4, 5, 3); R(hx + 12, hy - 8, 6, 4, 2); });
+    text("?", cx - 5, cy - 8, 2, 3);
+    var np = Math.round((1 - eo(k(t, T, T + 0.4))) * -70);
+    box2(np, 4, 66, 32, 0); text(BA.enemy, 7 + np, 10, 1, 3); if (BA.enemy.length <= 5) text(BA.lv, 40 + np, 10, 1, 3);
+    text("HP", 7 + np, 22, 1, 3); R(20 + np, 22, 40, 7, 3); R(21 + np, 23, 38, 5, 0); R(21 + np, 23, 38, 5, 2);
+    var px0 = Math.round(-70 + eo(k(t, T, T + 0.4)) * 70);
+    for (var gs = 0; gs < 56; gs++) R(2 + px0 + gs, 150 + Math.round(Math.abs(gs - 28) / 14), 1, 2, 3);
+    robot(px0, 62, { eyes: "smug", letter: "A", sc: 2 });
+    box2(0, 152, W, 40, 0);
+    if (t < BA.subT) { var n1 = typed(T + 0.1, t); text(BA.l1, 6, 162, 1, 3, { n: n1 }); text(BA.l2, 6, 176, 1, 3, { n: Math.max(0, n1 - BA.l1.length) }); }
+    else { text(BA.s1, 6, 162, 1, 3); text(BA.s2, 6, 176, 1, 3, { n: typed(BA.subT, t, 30) }); }
+    if (t > BA.subT + 0.48 && (Math.floor(t * 4) & 1)) arrow(98, 178, 3);
+  }
+  function sc_check(t) {
+    var T = CH.t;
+    bgd(56, 60, 64); floor(164, t * 2);
+    var same = t >= CH.glitchT, bOn = t > CH.dropT;
+    var byy = Math.round(-100 + back(k(t, CH.dropT, CH.dropT + 0.3)) * 170);
+    var eA = t > CH.stampT - 0.12 ? "smug" : "n", eB = (t > CH.magT && t < CH.glitchT) ? "wide" : "n";
+    var gl = same && t < CH.glitchT + 0.24 && (Math.floor(t * 15) & 1);
+    if (bOn) robot(52, byy, { eyes: eB, letter: same && !gl ? "A" : "B", sweat: t > CH.magT + 0.2, sc: 2 });
+    robot(0, 76, { eyes: eA, letter: "A", armUp: t > CH.magT, sc: 2 });
+    plate(CH.a, 2, 171); if (t > CH.dropT + 0.3) plate(same && !gl ? CH.a : CH.b, 62, 171);
+    // B's work: big paper in the empty top area, with a big magnifier sweeping it
+    var py = Math.round(-34 + eo(k(t, T, T + 0.3)) * 48);
+    scaled(36, py, 2, function () { paperRaw(t > CH.dropT + 0.4, t); });
+    if (t > CH.magT) { var mg = eo(k(t, CH.magT, CH.magT + 0.35)), mx = 30 + mg * 28 + Math.sin(t * 3) * 10 * mg, my = 100 - mg * 62 + Math.cos(t * 2.3) * 4 * mg;
+      scaled(Math.round(mx), Math.round(my), 2, magRaw); }
+    // the sloppy verdict in a big speech bubble
+    if (t > CH.stampT && t < CH.glitchT - 0.08) {
+      var st = back(k(t, CH.stampT, CH.stampT + 0.14)), dy = Math.round((1 - st) * -30);
+      R(0, 2 + dy, W, 70, 3); R(2, 4 + dy, 108, 66, 0);
+      for (var r = 0; r < 10; r++) { R(72 + r, 72 + r, 14 - r * 1.4, 1, 3); R(74 + r, 72 + r, 10 - r * 1.4, 1, 0); }
+      sloppyLine(CH.stamp[0], 10 + dy, t, 3.3);
+      sloppyLine(CH.stamp[1], 48 + dy, t, 9.1);
+      R(98, 10 + dy, 3, 3, 3); R(6, 60 + dy, 3, 2, 3); R(100, 58 + dy, 2, 3, 3);
+    }
+    // B's label glitches to model A's: same sprite, same blind spot
+    if (t >= CH.glitchT) {
+      box2(4, 8, 104, 56, 0);
+      var lab = gl ? CH.b : CH.a; text(lab, "c", 16, fit(lab, 100, 2), 3);
+      text("?!", "c", 38, 2, 3);
+    }
+  }
+  function sc_verdict(t) {
+    bgd(56, 90, 70);
+    box2(0, 6, W, 24, 0); text(V.q, "c", 14, 1, 3);
+    var cur = t < V.jumpT ? 0 : 1, wob = (cur === 0 && (Math.floor(t * 12) & 1)) ? 1 : 0;
+    var yy = [42, 94], lab = ["YES", "NO"], lx = [22, 34];
+    for (var j = 0; j < 2; j++) {
+      if (j === cur) { R(0, yy[j], W, 40, 3); text(lab[j], lx[j] + 6, yy[j] + 6, 4, 0); barrow(8 + (cur ? Math.round((1 - eo(k(t, V.jumpT, V.jumpT + 0.1))) * 6) : wob * 2), yy[j] + 13, 0); }
+      else { box2(0, yy[j], W, 40, 0); text(lab[j], lx[j] + 6, yy[j] + 6, 4, 3); }
+    }
+    floor(166, t * 2);
+    robot(14, 146, { eyes: "wide" }); robot(68, 146, { eyes: "wide" });
+  }
+  function sc_not(t) {
+    bgd(56, 60, 0); floor(164, t * 2);
+    var ns = back(k(t, NT.t, NT.t + 0.11)), ss = fit(NT.text, 108, 6), fy = Math.round((80 - 7 * ss) / 2);
+    R(0, 0, W, 124, 3); R(0, 124, W, 3, 2);
+    var jit = t > NT.t + 0.2 ? ((Math.floor(t * 8) & 1) ? 1 : -1) : 0; // the slam word shakes, so the screen never freezes
+    text(NT.text, Math.round((W - tw(NT.text, ss)) / 2) + jit, Math.round(-50 + ns * (fy + 50)), ss, 0, { sh: 2 });
+    if (t > NT.postT) { var ip = back(k(t, NT.postT, NT.postT + 0.14));
+      for (var j = 0; j < NT.post.length; j++) { var s = NT.post[j], ps = fit(s, 108, 2), x0 = Math.round((W - tw(s, ps)) / 2);
+        text(s, Math.round(x0 + (j ? -1 : 1) * (1 - ip) * 110), 84 + j * 18, ps, 0); } }
+    robot(14 - jit, 128, { eyes: "x", letter: "A" }); robot(68 + jit, 128, { eyes: "x", letter: "A" });
+    plate(CH.a, 6, 176); plate(CH.a, 60, 176);
+  }
+  function sc_bank(t) {
+    var T = BK.t;
+    bgd(56, 130, 64); floor(184, t * 2);
+    var bk = Math.round((1 - eo(k(t, T, T + 0.24))) * 130);
+    bankDraw(4 + bk, 108, BK.label);
+    if (t > BK.itemT - 0.1) {
+      var iy = Math.round(110 - eo(k(t, BK.itemT - 0.1, BK.itemT + 0.22)) * 40) + (t > BK.itemT + 0.22 ? (Math.floor(t * 4) & 1) * 2 : 0); // the key bobs
+      scaled(4, iy, 2, function () { R(0, 0, 20, 20, 3); R(4, 4, 12, 12, 0); R(20, 8, 32, 4, 3); R(40, 12, 4, 8, 3); R(48, 12, 4, 6, 3); });
+      if (t > BK.itemT + 0.1) { sparkle(14, iy - 4, 2 + (Math.floor(t * 8) & 1), 3); sparkle(100, iy + 12, 2 + (Math.floor(t * 8 + 1) & 1), 3); }
+    }
+    if (t > BK.itemT) { box2(0, 4, W, 62, 0); text(BK.item, "c", 10, fit(BK.item, 108, 2), 3);
+      titleLines(30, 16, 3); }
+    if (t > BK.coinT && t < BK.coinT + 0.52) { var cb = k(t, BK.coinT, BK.coinT + 0.32);
+      for (var j2 = 0; j2 < 6; j2++) { var an2 = j2 / 6 * Math.PI * 2 + .5; text("$", Math.round(50 + Math.cos(an2) * (20 + cb * 30)), Math.round(90 + Math.sin(an2) * (8 + cb * 10)), 2, 3); } }
+  }
+
+  // timeline of screens; w = 1: a 0.167 s band wipe reveals it over the previous screen (content on both sides)
+  var SEG = [
+    { a: 0, f: sc_boot }, { a: M.t, f: sc_menu, w: 1 }, { a: TI.t, f: sc_title }, { a: BA.t, f: sc_battle, w: 1 },
+    { a: CH.t, f: sc_check, w: 1 }, { a: V.t, f: sc_verdict, w: 1 }, { a: NT.t, f: sc_not }, { a: BK.t, f: sc_bank, w: 1 }
+  ];
+  var WD = 0.167;
+  function segIdx(t) { var i = 0; for (var j = 0; j < SEG.length; j++) if (t >= SEG[j].a) i = j; return i; }
+  function segStart(t) { return SEG[segIdx(t)].a; }
+  function run(f, t, oy) { c.setTransform(1, 0, 0, 1, 0, 0); R(0, 0, W, H, 1); c.setTransform(1, 0, 0, 1, 0, oy); f(t); c.setTransform(1, 0, 0, 1, 0, 0); }
+
+  function scene(t) {
+    INV = 0;
+    if ((t >= TI.t && t < TI.t + 0.07) || (t >= V.jumpT && t < V.jumpT + 0.07) || (t >= NT.t && t < NT.t + 0.06)) INV = 1;
+    var oy = 0;
+    function jolt(t0, a) { var d = t - t0; if (d >= 0 && d < .2) { var m = Math.round((1 - d / .2) * a); oy += (Math.floor(d * 30) & 1) ? m : -m; } }
+    jolt(TI.t, 3); jolt(NT.t, 4); jolt(NT.postT, 2); jolt(CH.stampT, 2);
+    var i = segIdx(t), sg = SEG[i];
+    if (sg.w && t - sg.a < WD) {
+      var p = (t - sg.a) / WD, edge = Math.round(eo(p) * W);
+      run(SEG[i - 1].f, t, oy);
+      var keep = c; c = TMP; run(sg.f, t, oy); c = keep;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      for (var b = 0; b < H / 8; b++) {
+        if (b & 1) { c.drawImage(TMP.canvas, W - edge, b * 8, edge, 8, W - edge, b * 8, edge, 8); R(W - edge - 2, b * 8, 2, 8, 3); }
+        else { c.drawImage(TMP.canvas, 0, b * 8, edge, 8, 0, b * 8, edge, 8); R(edge, b * 8, 2, 8, 3); }
+      }
+      return;
+    }
+    run(sg.f, t, oy);
+  }
+
+  // ---------- seek-safe LCD ghosting: light persistence from t-1f, t-2f (never across a hard cut) ----------
+  var WG = [0.78, 0.16, 0.06];
+  var img = out.createImageData(W, H);
+  function draw(t) {
+    var datas = [], s0 = segStart(t);
+    for (var j = 0; j < 3; j++) { c = BUF[j]; var tj = Math.max(0, t - j / FPS); if (tj < s0 && !(SEG[segIdx(t)].w)) tj = s0; scene(tj); datas.push(c.getImageData(0, 0, W, H).data); }
+    var o = img.data, a = datas[0], b = datas[1], d = datas[2];
+    for (var i = 0; i < o.length; i += 4) {
+      o[i] = a[i] * WG[0] + b[i] * WG[1] + d[i] * WG[2]; o[i + 1] = a[i + 1] * WG[0] + b[i + 1] * WG[1] + d[i + 1] * WG[2];
+      o[i + 2] = a[i + 2] * WG[0] + b[i + 2] * WG[1] + d[i + 2] * WG[2]; o[i + 3] = 255; }
+    out.putImageData(img, 0, 0);
+  }
+
+  draw(0);
+  var tl = gsap.timeline({ paused: true }), clock = { t: 0 };
+  tl.to(clock, { t: END, duration: END, ease: "none", onUpdate: function () { draw(clock.t); } }, 0);
+
+  // shared end card (kit/endcard.js): hard cut 0.1 s after the last word, 2 s hold, with the title
+  // and a blinking PRESS START so the hold never freezes and its lower third is never empty
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 1e-3) throw new Error("style Q: end card ends " + plan.end + " but data-duration is " + END);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  var et = document.createElement("div"); et.className = "ec-title"; et.textContent = D.title.lines.join(" "); card.appendChild(et);
+  var pr = document.createElement("div"); pr.className = "ec-press"; pr.textContent = D.press;
+  pr.style.color = (D.brand && D.brand.accent) || KAEndCard.DEFAULT_BRAND.accent; card.appendChild(pr);
+  var clogo = card.querySelector(".ka-endcard-logo"), cname = card.querySelector(".ka-endcard-name");
+  tl.fromTo([clogo, cname], { scale: 1 }, { scale: 1.06, duration: END - plan.start - 0.4, ease: "none", immediateRender: false }, plan.start + 0.4); // slow push
+  for (var bt = plan.start + 0.35; bt < END; bt += 0.5) { tl.set(pr, { autoAlpha: 0 }, bt); if (bt + 0.15 < END) tl.set(pr, { autoAlpha: 1 }, bt + 0.15); }
+  tl.set({}, {}, END);
+  window.__timelines["main"] = tl;
+  window.__cues = { segments: SEG.map(function (s) { return s.a; }), endcard: plan.start };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style H: terminal noir data-viz, __H_TITLE__</title>
+<!--
+  Style H template, from the canonical look (read only). Instantiate with styles/H/build.py, which
+  writes the beat plan into window.__H and the composition length into every data-duration. Do not
+  edit an instantiated copy by hand.
+
+  The look is unchanged in kind: one 2D canvas, every pixel a pure function of t (drawFrame), a
+  dashboard world (latency chart, hero panel, KPI row) under a moving camera, screen-space
+  two-tone headlines with per-word rise, HUD chrome, CRT scanlines and vignette, frame-blended
+  motion blur, glitch slices on the chaos beat, orange reserved for the tension payoff.
+
+  Script-agnostic: the six acts (open, chaos, trace, checks, tension, close) sit on word-aligned
+  edges chosen by build.py; every structural time of the canonical cut is remapped piecewise-
+  linearly onto those edges (T()), headline words land on their spoken word, trace spans are the
+  trace act's content words timed to their speech, and the shared Keller AI end card
+  (kit/endcard.js) cuts in 0.1 s after the last word and holds 2 s.
+
+  Preflight fixes vs the canonical look: every canvas text run is >= 44 px at 1080 wide (the
+  canvas records its own minimum in window.__hText; the DOM preflight cannot see into a canvas),
+  the agent rows are up from frame one (no empty lower half on the open), the lower band is filled
+  on every act, the end card holds >= 1.5 s after the last word and keeps moving, and the audio
+  is one bus from kit/sfx_bus.py. Fonts (D4): every macOS system face of the canonical look (its
+  mono, its condensed display face and the four "sloppy" faces; listed for style H in
+  styles/styles.json) is swapped for a bundled OFL font: mono -> Comic Shanns, display -> Lilita
+  One, sloppy -> Virgil.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Virgil"; font-weight: 300 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #040507; }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #040507; font-family: "KS Shanns", monospace; }
+#cv { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+/* CRT subtlety: scanlines + vignette, static */
+.scan { position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.22) 3px, rgba(0,0,0,0) 4px); }
+.vig { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.62) 100%); }
+/* keep the fonts warm so the canvas can use them (off-screen, invisible, skipped by the legibility preflight) */
+.warm { position: absolute; left: -9999px; top: 0; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__H_DURATION__">
+  <canvas id="cv" width="1080" height="1920"></canvas>
+  <div class="scan"></div>
+  <div class="vig"></div>
+  <div class="warm" data-legibility="ignore">
+    <span style="font-family: 'KS Shanns'; font-weight: 400">a</span><span style="font-family: 'KS Shanns'; font-weight: 700">a</span>
+    <span style="font-family: 'KS Lilita'; font-weight: 900">a</span><span style="font-family: 'KS Virgil'">a</span>
+  </div>
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__H_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__H_DURATION__" data-volume="1"></audio>
+</div>
+<script>window.__H = /*__H_DATA__*/null;</script>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__H;
+  if (!D) throw new Error("style H: window.__H is empty (instantiate with styles/H/build.py)");
+  var root = document.getElementById("root");
+  var FPS = 30;
+  var END = parseFloat(root.getAttribute("data-duration"));
+  var cv = document.getElementById("cv"), c = cv.getContext("2d");
+  var W = 1080, H = 1920;
+  var C = { bg: "#040507", ink: "#e8edf5", ink2: "rgba(232,237,245,0.70)", ink3: "rgba(232,237,245,0.50)",
+    hair: "rgba(140,170,220,0.16)", blue: "#4da6ff", purple: "#7a4dff", orange: "#ff7a18",
+    green: "#3ee08f", red: "#ff3b4e", amber: "#ffd23f", pink: "#ff5c8a" };
+  var MONO = "KS Shanns", DISP = "KS Lilita", HAND = "KS Virgil";
+  var MIN_PX = 44;  // preflight/legibility.py floor at 1080 wide
+
+  // ---------- math ----------
+  function cl(x, a, b) { return Math.max(a, Math.min(b, x)); }
+  function seg(t, a, b) { return cl((t - a) / (b - a), 0, 1); }
+  function lerp(a, b, k) { return a + (b - a) * k; }
+  function eo3(k) { return 1 - Math.pow(1 - k, 3); }
+  function eo4(k) { return 1 - Math.pow(1 - k, 4); }
+  function eio3(k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; }
+  function eo5(k) { return 1 - Math.pow(1 - k, 5); }
+  function spring(k) { if (k <= 0) return 0; if (k >= 1) return 1; var w = 9; return 1 - Math.exp(-w * k) * (1 + w * k); }
+  function hash(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  function noise1(x) { var i = Math.floor(x), f = x - i; var u = f * f * (3 - 2 * f); return lerp(hash(i), hash(i + 1), u) * 2 - 1; }
+
+  // ---------- time map: canonical act edges -> this narration's act edges ----------
+  var ORIG = D.orig, BD = D.bounds;
+  function T(x) {
+    for (var i = 1; i < 7; i++) if (x <= ORIG[i]) return BD[i - 1] + (x - ORIG[i - 1]) * (BD[i] - BD[i - 1]) / (ORIG[i] - ORIG[i - 1]);
+    return BD[6] + (x - ORIG[6]);
+  }
+  // structural beats of the canonical cut, remapped
+  var B = {};
+  var B0 = { walk: 1.44, failure: 2.08, worries: 2.72, more: 3.40, sloppy: 3.76, agents: 4.16, its: 5.16, run: 6.44,
+    exactly: 7.04, plan: 7.92, says: 8.24, passes: 9.04, every: 9.36, check: 9.76, and: 10.28, still: 10.56,
+    project: 11.12, worse: 11.52, off: 11.84, heres: 12.29, setup: 12.77, plain: 13.21, terms: 13.41 };
+  for (var key in B0) B[key] = T(B0[key]);
+  var A = D.acts;
+
+  // ---------- drawing helpers ----------
+  // window.__hText: the canvas's own legibility record (DOM preflight cannot see canvas text).
+  var TX = window.__hText = { min: Infinity, count: 0, small: [] };
+  function font(px, fam, wt) { c.font = (wt || 400) + " " + px + "px \"" + fam + "\""; }
+  function record(s, px) {
+    var m = c.getTransform(), sc = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
+    if (c.globalAlpha < 0.2 || !String(s).trim()) return;
+    var eff = px * sc; TX.count++;
+    if (eff < TX.min) TX.min = eff;
+    if (eff < MIN_PX - 0.01 && TX.small.length < 50) TX.small.push([String(s).slice(0, 30), Math.round(eff * 100) / 100]);
+  }
+  function txt(s, x, y, px, fam, wt, col, align, ls) {
+    font(px, fam, wt); c.fillStyle = col; c.textAlign = align || "left"; c.textBaseline = "alphabetic";
+    record(s, px);
+    if (ls) { c.letterSpacing = ls + "px"; } c.fillText(s, x, y); if (ls) { c.letterSpacing = "0px"; }
+  }
+  function glowTxt(s, x, y, px, fam, wt, col, blur, align, ls) {
+    c.save(); c.shadowColor = col; c.shadowBlur = blur; txt(s, x, y, px, fam, wt, col, align, ls); c.restore();
+    txt(s, x, y, px, fam, wt, col, align, ls);
+  }
+  function fitTxt(s, px, fam, wt, maxW) { // truncate (never shrink below the size floor) to fit maxW
+    font(px, fam, wt); if (c.measureText(s).width <= maxW) return s;
+    while (s.length > 1 && c.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+    return s + "…";
+  }
+  function fitPx(lineWidths, px, maxW, minPx) { var w = Math.max.apply(null, lineWidths); return w > maxW ? Math.max(minPx, Math.floor(px * maxW / w)) : px; }
+  function rect(x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
+  function rr(x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+  function panel(x, y, w, h, title, k, accent, right) {
+    if (k <= 0) return;
+    c.save(); c.globalAlpha *= cl(k * 1.6, 0, 1);
+    var g = c.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, "rgba(14,18,28,0.92)"); g.addColorStop(1, "rgba(8,10,16,0.92)");
+    c.fillStyle = g; rr(x, y, w, h, 6); c.fill();
+    c.strokeStyle = C.hair; c.lineWidth = 1.5; rr(x, y, w, h, 6); c.stroke();
+    c.strokeStyle = accent || C.blue; c.lineWidth = 2.5; var L = 18;
+    c.beginPath(); c.moveTo(x, y + L); c.lineTo(x, y); c.lineTo(x + L, y);
+    c.moveTo(x + w - L, y + h); c.lineTo(x + w, y + h); c.lineTo(x + w, y + h - L); c.stroke();
+    rect(x, y + 70, w * eo3(seg(k, 0, 1)), 1.5, C.hair);
+    var rw = 0;
+    if (right) { font(44, MONO, 400); rw = c.measureText(right).width + 40; txt(right, x + w - 24, y + 50, 44, MONO, 400, C.ink3, "right"); }
+    txt(fitTxt(title, 44, MONO, 700, w - 48 - rw), x + 24, y + 50, 44, MONO, 700, C.ink2);
+    c.restore();
+  }
+  function sparkPath(xs, ys, w, h, pts) {
+    c.beginPath();
+    for (var i = 0; i < pts.length; i++) { var px = xs + (i / (pts.length - 1)) * w, py = ys + h - pts[i] * h; if (i) c.lineTo(px, py); else c.moveTo(px, py); }
+  }
+
+  // ---------- data from the plan ----------
+  var CO = D.content;
+  var SLOP = CO.slop;              // [text, family-key, weight]
+  var FAM = { hand: HAND, mono: MONO, disp: DISP };
+  var CHECKS = CO.checks;          // 16 short names
+  var BOOT = CO.boot;
+  var SPANS = D.spans.map(function (s) { return [s.name, s.x0, s.w, s.depth, s.t, s.depth ? C.blue : C.purple]; });
+
+  // ---------- world: dashboard ----------
+  var PA = { x: 44, y: 560, w: 992, h: 470 };   // metrics chart
+  var PB = { x: 44, y: 1060, w: 992, h: 900 };  // log / trace / checks (hero panel)
+  var KY = 1990, KH = 180;                       // KPI row
+
+  // SHOT TABLE: one hero per beat. [start, dur, scale, cx, cy]
+  var SHOTS = [
+    [0, 0, 1.0, 540, 960],
+    [B.more - 0.12, 0.28, 1.0, 540, 1480],
+    [B.still - 0.08, 0.42, 2.2, 927, 2000],
+    [B.project - 0.12, 0.5, 1.0, 540, 960]
+  ];
+  function cam(t) {
+    var s = SHOTS[0][2], cx = SHOTS[0][3], cy = SHOTS[0][4], rot = 0;
+    for (var i = 1; i < SHOTS.length; i++) {
+      var S = SHOTS[i], k = eio3(seg(t, S[0], S[0] + S[1]));
+      s = lerp(s, S[2], k); cx = lerp(cx, S[3], k); cy = lerp(cy, S[4], k);
+    }
+    s *= lerp(1.05, 1.0, eo3(seg(t, 0, Math.max(0.5, B.more - 0.4))));
+    // constant-speed circular drift (about 5 px/s): the world never holds still, so no beat
+    // reads as a freeze (preflight/dead_frames.py), and it is far below the motion-blur trigger
+    cx += 6 * Math.cos(t * 0.9); cy += 6 * Math.sin(t * 0.9);
+    if (t >= B.more && t < B.its) {
+      var a = seg(t, B.more, B.sloppy) * (1 - seg(t, T(5.0), B.its));
+      cx += noise1(t * 22) * 14 * a; cy += noise1(t * 19 + 9) * 12 * a; rot = noise1(t * 7 + 3) * 0.012 * a;
+    }
+    return { s: s, cx: cx, cy: cy, rot: rot };
+  }
+  function pushF(t) { return seg(t, B.still - 0.08, B.still + 0.3) * (1 - seg(t, B.project - 0.12, B.project + 0.2)); }
+  function endF(t) { return seg(t, B.project - 0.12, B.project + 0.3); }
+
+  function chartData(t, n, seed, amp) {
+    var a = []; for (var i = 0; i < n; i++) { var x = i * 0.35 + t * 1.6 + seed; a.push(0.45 + noise1(x) * 0.22 * amp + noise1(x * 3.1) * 0.06); } return a;
+  }
+
+  function drawChart(t, sl) {
+    var x = PA.x, y = PA.y, w = PA.w, h = PA.h;
+    var ca = cl(1 - seg(t, B.more - 0.12, B.more + 0.1) + endF(t), 0, 1);
+    if (ca <= 0) return;
+    c.save(); c.globalAlpha *= ca;
+    var k = eo3(seg(t, -0.6, 0.6));
+    panel(x, y, w, h, t > B.project - 0.12 ? CO.health_title : "LATENCY", k, sl > 0.5 ? C.red : C.blue, sl > 0.5 ? "p99 ▲ 4.8s" : "LIVE");
+    var gx = x + 120, gy = y + 100, gw = w - 160, gh = h - 190;
+    c.save(); c.globalAlpha *= k;
+    for (var i = 0; i <= 4; i += 2) { rect(gx, gy + gh * i / 4, gw, 1, "rgba(140,170,220,0.09)"); txt(String(400 - i * 100), gx - 14, gy + gh * i / 4 + 15, 44, MONO, 400, C.ink3, "right"); }
+    for (var j = 0; j <= 8; j++) rect(gx + gw * j / 8, gy, 1, gh, "rgba(140,170,220,0.05)");
+    var draw = eo3(seg(t, -0.5, Math.max(1.2, B.walk + 0.8)));
+    var n = 60, Ad = chartData(t, n, 0, 1 + sl * 2.6), Bd = chartData(t, n, 40, 0.6);
+    for (var b = 0; b < n; b++) {
+      if (b / n > draw) break;
+      var bh = (0.18 + 0.12 * (noise1(b * 0.7 + t * 2) + 1)) * gh * 0.5;
+      rect(gx + b * gw / n + 2, gy + gh - bh, gw / n - 5, bh, sl > 0.5 ? "rgba(255,59,78,0.20)" : "rgba(122,77,255,0.22)");
+    }
+    c.save(); c.beginPath(); c.rect(gx, gy - 20, gw * draw, gh + 40); c.clip();
+    var lc = sl > 0.5 ? C.red : C.blue;
+    c.shadowColor = lc; c.shadowBlur = 16; c.strokeStyle = lc; c.lineWidth = 3.5;
+    sparkPath(gx, gy, gw, gh, Ad); c.stroke();
+    c.shadowBlur = 0; c.strokeStyle = "rgba(232,237,245,0.35)"; c.lineWidth = 2; c.setLineDash([6, 8]);
+    sparkPath(gx, gy, gw, gh, Bd); c.stroke(); c.setLineDash([]);
+    var hk = seg(t, B.project - 0.1, B.project + 0.35);
+    if (hk > 0) {
+      var dip = eio3(seg(t, B.worse - 0.1, B.off + 0.4));
+      var P = []; for (var q = 0; q < n; q++) { var u = q / (n - 1); P.push(0.80 + 0.03 * noise1(q * 0.5) - dip * Math.pow(Math.max(0, u - 0.45) / 0.55, 1.6) * 0.62); }
+      c.globalAlpha = ca * hk; c.strokeStyle = C.orange; c.lineWidth = 4.5; c.shadowColor = C.orange; c.shadowBlur = 18;
+      sparkPath(gx, gy, gw, gh, P); c.stroke(); c.shadowBlur = 0;
+      var ex = gx + gw, ey = gy + gh - P[n - 1] * gh;
+      c.fillStyle = C.orange; c.beginPath(); c.arc(ex - 2, ey, 9, 0, 6.283); c.fill();
+      if (dip > 0.05) { c.globalAlpha = ca * hk * cl(dip * 2, 0, 1); txt(CO.health_label + " " + Math.round(lerp(92, 41, dip)), ex - 26, ey + 60, 44, MONO, 700, C.orange, "right", 2); }
+      c.globalAlpha = ca;
+    }
+    c.restore();
+    if (draw < 1) { var hx = gx + gw * draw; rect(hx, gy - 10, 2, gh + 20, C.blue); }
+    txt("— p50", gx, y + h - 26, 44, MONO, 400, sl > 0.5 ? C.red : C.blue);
+    txt("- - base", gx + 250, y + h - 26, 44, MONO, 400, C.ink3);
+    if (endF(t) > 0) txt("— " + CO.health_label.toLowerCase(), gx + 540, y + h - 26, 44, MONO, 700, C.orange);
+    else txt("■ req/s", gx + 540, y + h - 26, 44, MONO, 400, "rgba(150,120,255,0.9)");
+    c.restore();
+    c.restore();
+  }
+
+  function drawBoot(t, a) {
+    if (a <= 0) return;
+    var x = PB.x + 30, y = PB.y + 136;
+    c.save(); c.globalAlpha *= a;
+    for (var i = 0; i < BOOT.length; i++) {
+      var st = -0.9 + i * Math.min(0.3, (B.more - 0.6) / BOOT.length), k = seg(t, st, st + 0.35); if (k <= 0) break;
+      var s = fitTxt(BOOT[i], 44, MONO, i === 0 ? 700 : 400, PB.w - 70), nch = Math.max(1, Math.floor(s.length * k));
+      txt(s.slice(0, nch), x, y + i * 64, 44, MONO, i === 0 ? 700 : 400, i === 0 ? C.ink : C.ink2);
+      if (k < 1 && Math.floor(t * 8) % 2 === 0) { font(44, MONO, 400); rect(x + c.measureText(s.slice(0, nch)).width + 4, y + i * 64 - 34, 20, 40, C.blue); }
+    }
+    // two agent rows with mini sparklines: up from frame one (the canonical left the lower half empty until 2.1 s)
+    var rows = CO.agents;
+    for (var r = 0; r < 2; r++) {
+      var k2 = eo3(seg(t, -0.6 + r * 0.25, 0.2 + r * 0.25)); if (k2 <= 0) continue;
+      var ry = PB.y + 520 + r * 120;
+      c.globalAlpha = a * k2;
+      rect(x, ry - 62, PB.w - 60, 96, "rgba(255,255,255,0.035)");
+      txt(fitTxt(rows[r][0], 44, MONO, 700, 330), x + 18, ry, 44, MONO, 700, C.ink);
+      c.strokeStyle = r ? C.green : C.red; c.lineWidth = 2.5; sparkPath(x + 370, ry - 48, 300 * k2, 56, chartData(t + r * 7, 30, r * 9, r ? 0.4 : 3)); c.stroke();
+      txt(rows[r][1], PB.x + PB.w - 50, ry, 44, MONO, 700, r ? C.green : C.red, "right");
+    }
+    // stream footer: rolling counters keep the panel's foot alive
+    c.globalAlpha = a * eo3(seg(t, -0.4, 0.4));
+    var ev = Math.floor(1200 + t * 431);
+    txt("events " + ev.toLocaleString("en-US"), x, PB.y + 745, 44, MONO, 400, C.ink3);
+    txt("● rec", PB.x + PB.w - 50, PB.y + 745, 44, MONO, 700, Math.floor(t * 2) % 2 ? C.red : "rgba(255,59,78,0.4)", "right");
+    c.restore();
+  }
+
+  function drawSlop(t, a) {
+    if (a <= 0) return;
+    c.save(); c.globalAlpha *= a;
+    rect(PB.x, PB.y + 72, PB.w, PB.h - 72, "rgba(255,40,60," + (0.10 + 0.05 * Math.max(0, noise1(t * 30))) + ")");
+    var n = Math.min(SLOP.length, Math.floor(seg(t, B.more, Math.min(B.its - 0.2, B.agents + 0.7)) * SLOP.length) + 1);
+    c.beginPath(); c.rect(PB.x + 4, PB.y + 74, PB.w - 8, PB.h - 78); c.clip();
+    for (var i = 0; i < n; i++) {
+      var L = SLOP[i], fam = FAM[L[1]] || HAND, sz = 46 + Math.floor(hash(i * 3.3) * 12), rot = (hash(i * 7.7) - 0.5) * 0.06;
+      var lx = PB.x + 26 + hash(i * 5.1) * 50, ly = PB.y + 140 + i * 66;
+      var s = fitTxt(L[0], sz, fam, L[2], PB.x + PB.w - 40 - lx);   // chaos stays inside the panel, never below 44 px
+      var jit = noise1(t * 14 + i) * 3;
+      c.save(); c.translate(lx + jit, ly); c.rotate(rot);
+      var col = i % 4 === 1 ? C.amber : (i % 3 === 0 ? C.pink : C.red);
+      c.shadowColor = col; c.shadowBlur = 10;
+      txt(s, 0, 0, sz, fam, L[2], col);
+      c.restore();
+    }
+    c.restore();
+  }
+
+  function drawTrace(t, a) {
+    if (a <= 0) return;
+    var x = PB.x + 30, y = PB.y + 150, w = PB.w - 60;
+    c.save(); c.globalAlpha *= a;
+    var tw = w - 470, tx = x + 440;
+    for (var m = 0; m <= 4; m += 2) { rect(tx + tw * m / 4, y - 10, 1, 700, "rgba(140,170,220,0.08)"); txt((m * D.traceSpan / 4).toFixed(1) + "s", tx + tw * m / 4, y - 20, 44, MONO, 400, C.ink3, "center"); }
+    for (var i = 0; i < SPANS.length; i++) {
+      var S = SPANS[i], k = spring(seg(t, S[4] - 0.06, S[4] + 0.5)); if (k <= 0) continue;
+      var ry = y + 60 + i * 92, bx = tx + tw * S[1], bw = Math.max(8, tw * S[2]) * eo4(seg(t, S[4] - 0.06, S[4] + 0.35));
+      c.globalAlpha = a * cl(k * 1.4, 0, 1);
+      txt(fitTxt(S[0], 44, MONO, S[3] ? 400 : 700, 410 - S[3] * 30), x + S[3] * 30, ry + 14, 44, MONO, S[3] ? 400 : 700, S[3] ? C.ink2 : C.ink);
+      c.save(); c.shadowColor = S[5]; c.shadowBlur = 14; rect(bx, ry - 20, Math.min(bw, tx + tw - bx), 38, S[5]); c.restore();
+      var ck = seg(t, S[4] + 0.18, S[4] + 0.4);
+      if (ck > 0) { c.globalAlpha = a * ck; txt("✓", x + w, ry + 14, 48, MONO, 700, C.green, "right"); }
+    }
+    c.globalAlpha = a;
+    // trace cursor: sweeps the waterfall across the trace act
+    var sw = seg(t, B.its, T(8.9)), sx = tx + tw * sw;
+    if (sw > 0 && sw < 1) {
+      var cg = c.createLinearGradient(sx - 60, 0, sx, 0); cg.addColorStop(0, "rgba(77,166,255,0)"); cg.addColorStop(1, "rgba(77,166,255,0.16)");
+      c.fillStyle = cg; c.fillRect(sx - 60, y - 10, 60, 700); rect(sx, y - 10, 3, 700, C.blue);
+    }
+    var pm = eo3(seg(t, B.plan, B.says + 0.3)), py = PB.y + PB.h - 84;
+    txt(CO.match_label, x, py, 44, MONO, 700, C.ink2, "left", 2);
+    rect(x, py + 24, w, 16, "rgba(255,255,255,0.06)");
+    c.save(); c.shadowColor = C.green; c.shadowBlur = 12; rect(x, py + 24, w * pm, 16, C.green); c.restore();
+    txt(Math.round(pm * 100) + "%", x + w, py, 56, MONO, 700, pm > 0.99 ? C.green : C.ink, "right");
+    c.restore();
+  }
+
+  function drawChecks(t, a) {
+    if (a <= 0) return;
+    var x = PB.x + 30, y = PB.y + 100, cols = 4, gw = (PB.w - 60 - 3 * 14) / cols, gh = 150;
+    var step = Math.min(0.05, Math.max(0.02, (B.still - B.passes) * 0.5 / CHECKS.length));
+    c.save(); c.globalAlpha *= a;
+    for (var i = 0; i < CHECKS.length; i++) {
+      var r = Math.floor(i / cols), q = i % cols, cx = x + q * (gw + 14), cy = y + r * (gh + 14);
+      var on = seg(t, B.passes + i * step, B.passes + i * step + 0.12);
+      var dim = lerp(1, 0.3, seg(t, T(10.0), B.still + 0.1));
+      c.globalAlpha = a * dim;
+      rr(cx, cy, gw, gh, 4); c.fillStyle = on > 0 ? "rgba(62,224,143," + (0.10 + 0.12 * (1 - on)) + ")" : "rgba(255,255,255,0.03)"; c.fill();
+      c.strokeStyle = on > 0 ? "rgba(62,224,143,0.55)" : C.hair; c.lineWidth = 1.5; rr(cx, cy, gw, gh, 4); c.stroke();
+      txt(fitTxt(CHECKS[i], 44, MONO, 700, gw - 24), cx + 14, cy + 58, 44, MONO, 700, on > 0 ? C.ink : C.ink3);
+      txt(on > 0 ? "● PASS" : "○ wait", cx + 14, cy + 122, 44, MONO, 700, on > 0 ? C.green : C.ink3);
+    }
+    c.globalAlpha = a;
+    var NC = CHECKS.length, tot = Math.round(NC * eo3(seg(t, B.passes, B.passes + NC * step + 0.1)));
+    var by = y + 4 * (gh + 14) + 80;
+    glowTxt(tot + " / " + NC, x, by, 64, MONO, 700, C.green, 18);
+    txt("PASSED · 0 FAILED", x + 300, by - 6, 44, MONO, 400, C.ink2);
+    c.restore();
+  }
+
+  function drawKPIs(t, sl) {
+    var NC = CHECKS.length;
+    var tiles = [
+      ["TESTS", function () { return t < B.passes ? "—" : Math.round(NC * eo3(seg(t, B.passes, B.check))) + ""; }, C.green],
+      ["LINT", function () { return t < T(6.4) ? "—" : "0 err"; }, C.green],
+      ["PLAN", function () { return t < B.plan ? "—" : (D.spans.length - 2) + "/" + (D.spans.length - 2); }, C.green],
+      [CO.metric, function () { return t < T(9.9) ? "—" : CO.metric_value; }, null]
+    ];
+    var gap = 14, tw = (992 - gap * 3) / 4;
+    for (var i = 0; i < 4; i++) {
+      var tx = 44 + i * (tw + gap);
+      c.save(); c.globalAlpha *= (i < 3 ? 1 - 0.92 * pushF(t) : 1);
+      rr(tx, KY, tw, KH, 6); c.fillStyle = "rgba(12,15,24,0.94)"; c.fill();
+      c.strokeStyle = (i === 3 && pushF(t) > 0) ? "rgba(255,122,24," + (0.6 * pushF(t)) + ")" : C.hair; c.lineWidth = 2; rr(tx, KY, tw, KH, 6); c.stroke();
+      txt(fitTxt(tiles[i][0], 44, MONO, 700, tw - 28), tx + 14, KY + 54, 44, MONO, 700, C.ink3);
+      var v = tiles[i][1](), col = tiles[i][2];
+      if (sl > 0.5 && i < 3) { v = ["ERR", "214", "??"][i]; col = C.red; }
+      if (i === 3) {
+        var hot = seg(t, B.still, B.still + 0.5);
+        col = hot > 0 ? C.orange : C.ink2;
+        c.globalAlpha *= (t < T(9.9) ? 1 : lerp(0.75, 1, hot));
+        txt(v, tx + 14, KY + 146, 72, DISP, 900, col);
+        if (v !== "—" && hot > 0) rect(tx + 14, KY + 158, 150 * eo4(hot), 5, C.orange);
+      } else {
+        if (col && v !== "—") glowTxt(v, tx + 14, KY + 146, 66, DISP, 900, col, 14); else txt(v, tx + 14, KY + 146, 66, DISP, 900, col || C.ink2);
+      }
+      c.restore();
+    }
+  }
+
+  function heroTitle(t) {
+    if (t < B.more) return CO.titles[0];
+    if (t < B.its) return CO.titles[1];
+    if (t < T(8.9)) return CO.titles[2];
+    return CO.titles[3];
+  }
+
+  function drawWorld(t) {
+    var sl = seg(t, B.more, B.more + 0.12) * (1 - seg(t, B.its - 0.05, B.its + 0.12));
+    drawChart(t, sl);
+    var ef = endF(t);
+    if (ef >= 1) return;
+    c.save(); c.globalAlpha *= 1 - ef;
+    drawKPIs(t, sl);
+    c.globalAlpha *= 1 - 0.92 * pushF(t);
+    panel(PB.x, PB.y, PB.w, PB.h, heroTitle(t), eo3(seg(t, -0.5, 0.8)), sl > 0.5 ? C.red : (t > T(8.9) ? C.green : C.blue), sl > 0.5 ? "● 2,417 err" : "");
+    drawBoot(t, c.globalAlpha * (1 - seg(t, B.more - 0.05, B.more + 0.1)));
+    drawSlop(t, sl);
+    drawTrace(t, c.globalAlpha * seg(t, B.its, B.its + 0.2) * (1 - seg(t, T(8.75), T(9.0))));
+    drawChecks(t, c.globalAlpha * seg(t, T(8.85), T(9.05)) * (1 - pushF(t)));  // no ghost of the checks on the push
+    c.restore();
+  }
+
+  // ---------- screen space: headlines (one per act; words rise on their spoken word) ----------
+  var ACCENT = [C.blue, C.red, C.purple, C.green, C.orange, C.blue];
+  var Y0 = 300;
+  function lineSize(k, base) {
+    var ws = A[k].hl.map(function (ln) { font(base, DISP, 900); var w = 0; ln.forEach(function (wd) { w += c.measureText(wd[0]).width + base * 0.22; }); return w; });
+    return fitPx(ws.length ? ws : [0], base, W - 100, 72);
+  }
+  var HPX = [];
+  function kicker(s, st, col, fam) { var k = seg(t_, st, st + 0.3); if (k <= 0) return; c.globalAlpha = k; txt(fitTxt(s, 44, fam || MONO, 700, W - 100), 48, 226, 44, fam || MONO, 700, col || C.blue, "left", 3); c.globalAlpha = 1; }
+  var t_ = 0;
+  function words(ws, en, px, yy, accent) {
+    var x = 46;
+    for (var i = 0; i < ws.length; i++) {
+      var k = eo5(seg(t_, ws[i][1], ws[i][1] + 0.32)), out = 1 - seg(t_, en - 0.12, en);
+      font(px, DISP, 900);
+      var wdt = c.measureText(ws[i][0]).width;
+      if (k > 0 && out > 0) {
+        c.save(); c.globalAlpha = k * out; c.beginPath(); c.rect(x - 10, yy - px * 0.8, wdt + 30, px * 0.88); c.clip();
+        var col = ws[i][2] ? accent : C.ink;
+        if (col !== C.ink) { c.shadowColor = col; c.shadowBlur = 22; }
+        txt(ws[i][0], x, yy + (1 - k) * px * 0.9, px, DISP, 900, col);
+        c.restore();
+      }
+      x += wdt + px * 0.22;
+    }
+  }
+  function headline(t) {
+    t_ = t;
+    c.save();
+    var g = c.createLinearGradient(0, 150, 0, 540); g.addColorStop(0, "rgba(4,5,7,0.0)"); g.addColorStop(0.18, "rgba(4,5,7,0.93)"); g.addColorStop(0.88, "rgba(4,5,7,0.93)"); g.addColorStop(1, "rgba(4,5,7,0)");
+    c.fillStyle = g; c.fillRect(0, 150, W, 390);
+    var k = 0; while (k < 5 && t >= A[k + 1].start) k++;
+    var act = A[k], en = k < 5 ? A[k + 1].start : END + 1;
+    if (k === 1) { chaosHead(t, act); c.restore(); return; }
+    kicker(("0" + (k + 1)).slice(-2) + " · " + act.kicker, k === 0 ? -1 : act.start - 0.05, k === 3 ? C.green : (k === 4 ? C.orange : C.blue));
+    var px = HPX[k];
+    var lines = act.hl;
+    var top = Y0 + 40;
+    var yy = lines.length > 1 ? [top, top + Math.round(px * 1.08)] : [top + 50];
+    for (var i = 0; i < lines.length; i++) words(lines[i], en, px, yy[i], ACCENT[k]);
+    if (k === 0 && lines.length && lines[0].length) {   // light lead-in so frame one is populated
+      var ik = 1 - seg(t, lines[0][0][1] - 0.1, lines[0][0][1]);
+      if (ik > 0) { c.globalAlpha = ik; txt(fitTxt(CO.lead, 72, MONO, 400, W - 100), 48, Y0 + 40, 72, MONO, 400, C.ink2); c.globalAlpha = 1; }
+    }
+    if (k === 5) {
+      var sk = eo3(seg(t, B.plain, B.terms + 0.3));
+      var sub = fitTxt(CO.close_sub, 48, MONO, 400, W - 140), sy = yy[yy.length - 1] + 70;   // stays above the chart panel (y 560)
+      c.globalAlpha = sk; txt(sub, 48, sy, 48, MONO, 400, C.ink2); c.globalAlpha = 1;
+      if (sk > 0.5 && Math.floor(t * 2.5) % 2 === 0) { font(48, MONO, 400); rect(48 + c.measureText(sub).width + 12, sy - 38, 22, 46, C.blue); }
+    }
+    c.restore();
+  }
+
+  function chaosHead(t, act) {
+    // gleefully bad: hand font, crooked, mis-kerned, wobbling letters on the act's own words
+    var k = seg(t, act.start, act.start + 0.15);
+    c.save(); c.globalAlpha = k;
+    txt(fitTxt("02 · " + act.kicker.toLowerCase() + " (sic)", 48, HAND, 700, W - 100), 48, 226, 48, HAND, 700, C.red);
+    var lines = act.hl, gi = 0;
+    for (var li = 0; li < lines.length; li++) {
+      var x = 56, base = li ? 448 : 330, px0 = li ? 112 : 96;
+      // fit: estimate the line at its mean letter size and shrink (never below 64 px) to stay on screen
+      font(px0 + 15, HAND, 700);
+      var est = lines[li].reduce(function (s, wd) { return s + c.measureText(wd[0]).width * 0.92 + 30; }, 0);
+      if (est > W - 100) px0 = Math.max(64, Math.floor(px0 * (W - 100) / est) - 8);
+      for (var wi = 0; wi < lines[li].length; wi++) {
+        var wd = lines[li][wi], letters = wd[0].split("");
+        for (var i = 0; i < letters.length; i++, gi++) {
+          var lk = seg(t, wd[1] + i * 0.035, wd[1] + i * 0.035 + 0.1); if (lk <= 0) break;
+          var px = px0 + hash(gi * 9.1) * 30, wob = noise1(t * 9 + gi * 3) * 0.12 + (hash(gi * 2.2) - 0.5) * 0.3;
+          font(px, HAND, 700); var adv = c.measureText(letters[i]).width;
+          c.save(); c.translate(x, base + (hash(gi * 4.4) - 0.5) * 30 + noise1(t * 11 + gi) * 5); c.rotate(wob);
+          var col = gi % 3 === 2 ? C.amber : (gi % 2 ? C.pink : C.red);
+          c.shadowColor = col; c.shadowBlur = 20; c.globalAlpha = k * lk; txt(letters[i], 0, 0, px, HAND, 700, col); c.restore();
+          x += adv * 0.92 + (hash(gi * 6.6) - 0.3) * 14;
+        }
+        x += 30;
+      }
+    }
+    c.restore();
+  }
+
+  // tension card (screen space): the metric held against the passing checks, then a CTA pill
+  function tensionCard(t) {
+    var k = eo4(seg(t, B.worse - 0.05, B.worse + 0.4)); if (k <= 0) return;
+    var y = 1090 + (1 - k) * 60;
+    c.save(); c.globalAlpha = k;
+    rr(44, y, 992, 320, 8); c.fillStyle = "rgba(14,10,8,0.94)"; c.fill();
+    c.strokeStyle = "rgba(255,122,24,0.55)"; c.lineWidth = 2.5; rr(44, y, 992, 320, 8); c.stroke();
+    txt(fitTxt(CO.metric, 48, MONO, 700, 560), 84, y + 74, 48, MONO, 700, C.ink2, "left", 3);
+    txt(fitTxt(CO.metric_sub, 44, MONO, 400, 560), 84, y + 132, 44, MONO, 400, C.ink3);
+    glowTxt(CO.metric_value, 1000, y + 270, 230, DISP, 900, C.orange, 30, "right");
+    txt(CHECKS.length + "/" + CHECKS.length, 84, y + 280, 72, DISP, 900, C.green);
+    txt("checks passed", 84, y + 200, 44, MONO, 400, C.ink3);
+    c.restore();
+    var k2 = eo4(seg(t, B.setup, B.setup + 0.45)); if (k2 <= 0) return;
+    c.save(); c.globalAlpha = k2;
+    var cy = 1520 + (1 - k2) * 40;
+    rr(44, cy, 992, 130, 65); c.fillStyle = "rgba(77,166,255,0.12)"; c.fill();
+    c.strokeStyle = C.blue; c.lineWidth = 3; rr(44, cy, 992, 130, 65); c.stroke();
+    txt(fitTxt(CO.cta, 56, DISP, 900, 900), 540, cy + 86, 56, DISP, 900, C.ink, "center", 3);
+    txt(fitTxt(CO.handle, 44, MONO, 700, 900), 540, cy + 210, 44, MONO, 700, C.ink2, "center", 2);
+    c.restore();
+  }
+
+  function hud(t, sl) {
+    var g = c.createLinearGradient(48, 56, 112, 120); g.addColorStop(0, C.blue); g.addColorStop(1, C.purple);
+    c.fillStyle = g; rr(48, 56, 64, 64, 10); c.fill();
+    txt("K", 80, 104, 46, MONO, 700, "#05070b", "center");
+    txt(fitTxt(CO.mark, 44, MONO, 700, 420), 130, 104, 44, MONO, 700, C.ink, "left", 3);
+    var f = Math.floor(t * 30 + 1e-6), ss = Math.floor(f / 30), ff = f % 30;
+    txt("TC " + (ss < 10 ? "0" : "") + ss + ":" + (ff < 10 ? "0" : "") + ff, W - 48, 96, 44, MONO, 700, C.ink2, "right", 1);
+    var live = Math.floor(t * 2) % 2 === 0;
+    txt((live ? "●" : "○") + " LIVE", W - 48, 150, 44, MONO, 700, sl > 0.5 ? C.red : C.green, "right", 1);
+    // bottom ticker (44 px, phone-legible)
+    rect(0, H - 100, W, 1, C.hair);
+    var items = CO.ticker, wsum = 0, ws = [];
+    font(44, MONO, 400); for (var i = 0; i < items.length; i++) { var iw = c.measureText(items[i]).width + 70; ws.push(iw); wsum += iw; }
+    var off = (t * 90) % wsum;
+    for (var r = 0; r < 3; r++) { var ix = 48 + r * wsum - off; for (var j = 0; j < items.length; j++) {
+      if (ix > -ws[j] && ix < W) {
+        var col = items[j] === CO.ticker_hot && t > B.still ? C.orange : C.ink3;
+        txt(items[j], ix, H - 40, 44, MONO, 400, col);
+      }
+      ix += ws[j];
+    } }
+    c.strokeStyle = "rgba(232,237,245,0.35)"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(24, 190); c.lineTo(24, 166); c.lineTo(48, 166); c.moveTo(W - 48, 166); c.lineTo(W - 24, 166); c.lineTo(W - 24, 190); c.stroke();
+  }
+
+  // frame-blended motion blur (180-degree shutter) while the camera moves
+  var mainC = c, oc = document.createElement("canvas"); oc.width = W; oc.height = H; var occ = oc.getContext("2d");
+  function motion(t) {
+    var a = cam(t), b = cam(t - 1 / 60);
+    return Math.abs(a.cx - b.cx) * a.s + Math.abs(a.cy - b.cy) * a.s + Math.abs(a.s - b.s) * 900 + Math.abs(a.rot - b.rot) * 2000;
+  }
+  function drawFrame(t) {
+    var m = motion(t), n = m < 1.5 ? 1 : Math.min(8, 3 + Math.floor(m / 6));
+    if (n === 1) { c = mainC; scene(t); return; }
+    for (var i = 0; i < n; i++) {
+      c = occ; scene(t - (1 / 60) * (1 - i / (n - 1)));
+      mainC.setTransform(1, 0, 0, 1, 0, 0); mainC.globalAlpha = 1 / (i + 1); mainC.drawImage(oc, 0, 0);
+    }
+    mainC.globalAlpha = 1; c = mainC;
+  }
+  function scene(t) {
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
+    c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+    var sl = seg(t, B.more, B.more + 0.12) * (1 - seg(t, B.its - 0.05, B.its + 0.12));
+    var rg = c.createRadialGradient(240, 700, 0, 240, 700, 900);
+    rg.addColorStop(0, sl > 0.5 ? "rgba(255,40,60,0.20)" : "rgba(77,166,255,0.13)"); rg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = rg; c.fillRect(0, 0, W, H);
+    var pg = c.createRadialGradient(900, 1500, 0, 900, 1500, 900);
+    pg.addColorStop(0, t > B.passes && t < B.heres ? "rgba(62,224,143,0.10)" : "rgba(122,77,255,0.13)"); pg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = pg; c.fillRect(0, 0, W, H);
+    var k = cam(t);
+    c.save();
+    c.translate(W / 2, H / 2); c.rotate(k.rot); c.scale(k.s, k.s); c.translate(-k.cx, -k.cy);
+    c.fillStyle = "rgba(140,170,220,0.10)";
+    for (var gy = 520; gy < 2200; gy += 40) for (var gx = 4; gx < W; gx += 40) c.fillRect(gx, gy, 2, 2);
+    drawWorld(t);
+    c.restore();
+    if (sl > 0.5 && hash(Math.floor(t * 15)) > 0.55) {
+      var yy = 600 + hash(Math.floor(t * 15) + 2) * 1100, hh = 20 + hash(Math.floor(t * 15) + 5) * 60;
+      c.drawImage(c.canvas, 0, yy, W, hh, (hash(Math.floor(t * 15) + 7) - 0.5) * 60, yy, W, hh);
+    }
+    headline(t);
+    tensionCard(t);
+    hud(t, sl);
+  }
+
+  function build() {
+    for (var i = 0; i < 6; i++) HPX[i] = lineSize(i, 120);
+    var tl = gsap.timeline({ paused: true });
+    var clock = { t: 0 };
+    tl.to(clock, { t: END, duration: END, ease: "none", onUpdate: function () { drawFrame(clock.t); } }, 0);
+    // end card (kit/endcard.js) by a hard cut, then a slow push so the hold never freezes
+    var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+    if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style H: data-duration " + END + " != end-card plan end " + plan.end);
+    var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+    var logo = card.querySelector(".ka-endcard-logo");
+    tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+    var cname = card.querySelector(".ka-endcard-name");
+    if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+    tl.set({}, {}, END);
+    drawFrame(0);
+    window.__timelines["main"] = tl;
+  }
+  var faces = ["400 44px \"KS Shanns\"", "700 44px \"KS Shanns\"", "900 44px \"KS Lilita\"", "700 44px \"KS Virgil\""];
+  if (document.fonts && document.fonts.load) {
+    Promise.all(faces.map(function (f) { return document.fonts.load(f); })).then(build, build);
+  } else { build(); }
+})();
+</script>
+</body>
+</html>

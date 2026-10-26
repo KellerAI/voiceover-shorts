@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "voiceover-shorts",
+  "version": "0.2.0",
+  "description": "Turn a timestamped voiceover into short-form video renders: word timings drive beats, layout, and render timing",
+  "author": {
+    "name": "KellerAI",
+    "email": "plugins@kellerai.io"
+  },
+  "homepage": "https://github.com/KellerAI/voiceover-shorts",
+  "repository": "https://github.com/KellerAI/voiceover-shorts",
+  "license": "LicenseRef-MIT-NoTraining",
+  "keywords": ["voiceover", "shorts", "short-form video", "video rendering", "timestamps", "captions"]
+}

@@ -1,0 +1,196 @@
+{
+  "cohorts": {
+    "K-variants": {
+      "order": [
+        "K16"
+      ],
+      "ranks": {
+        "K16": 1.0
+      },
+      "subjects": {
+        "K16": {
+          "mean_score": 5.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 5.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:326",
+              "text": "16 Bit is the best arcade versions so far. They all need to have the subtitles removed though.",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round6_S49_K16-pixel-arcade-16bit.mp4"
+            }
+          ],
+          "style_key": "K",
+          "variant": "K16"
+        }
+      }
+    },
+    "global": {
+      "order": [
+        "D",
+        "C",
+        "E",
+        "B",
+        "F",
+        "A",
+        "G",
+        "H"
+      ],
+      "ranks": {
+        "A": 7.0,
+        "B": 4.5,
+        "C": 2.0,
+        "D": 1.0,
+        "E": 3.0,
+        "F": 4.5,
+        "G": 7.0,
+        "H": 7.0
+      },
+      "subjects": {
+        "A": {
+          "mean_score": 4.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 4.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:36",
+              "text": "Too fast and needs polish but could be used for press release pure data videos",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round1_S61_A-kinetic-type.mp4"
+            }
+          ],
+          "style_key": "A",
+          "variant": null
+        },
+        "B": {
+          "mean_score": 4.5,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 4.5,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:50",
+              "text": "Needs polish but would be good for time based or workflow videos",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round1_S61_B-cinematic-depth.mp4"
+            }
+          ],
+          "style_key": "B",
+          "variant": null
+        },
+        "C": {
+          "mean_score": 5.5,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 5.5,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:64",
+              "text": "Close second, best when there are actual UI/UX functions to show.",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round1_S61_C-product-ui.mp4"
+            }
+          ],
+          "style_key": "C",
+          "variant": null
+        },
+        "D": {
+          "mean_score": 6.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 6.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:78",
+              "text": "Best so far, some alignment tweaks to match the line following in the first segment. Better for symbolic work",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round1_S61_D-reel-native.mp4"
+            }
+          ],
+          "style_key": "D",
+          "variant": null
+        },
+        "E": {
+          "mean_score": 5.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 5.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:96",
+              "text": "Cleanest so far, small speed tweaks to the effects",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round2_S61_E-ui-kinetic-type.mp4"
+            }
+          ],
+          "style_key": "E",
+          "variant": null
+        },
+        "F": {
+          "mean_score": 4.5,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 4.5,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:110",
+              "text": "This one needs some polish but a decent style",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round2_S61_F-isometric.mp4"
+            }
+          ],
+          "style_key": "F",
+          "variant": null
+        },
+        "G": {
+          "mean_score": 4.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 4.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:124",
+              "text": "This one is too busy",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round2_S61_G-editorial-print.mp4"
+            }
+          ],
+          "style_key": "G",
+          "variant": null
+        },
+        "H": {
+          "mean_score": 4.0,
+          "n": 1,
+          "ratings": [
+            {
+              "rater": "owner",
+              "score": 4.0,
+              "score_origin": "mapped",
+              "source": "Shorts-Feedback.md:138",
+              "text": "Too much going on but over all style might work with polish",
+              "ts": "2026-10-22T00:00:00+00:00",
+              "video": "share/round2_S61_H-terminal-dataviz.mp4"
+            }
+          ],
+          "style_key": "H",
+          "variant": null
+        }
+      }
+    }
+  },
+  "ratings_used": 9,
+  "rows_read": 9,
+  "rule": "latest ts per (rater, style_key, variant, cohort, video); mean per subject; order by mean desc then subject; ties share averaged ranks",
+  "schema_version": 1,
+  "store": "feedback/ratings.jsonl"
+}

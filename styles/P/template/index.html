@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style P: VHS camcorder tape, __P_TITLE__</title>
+<!--
+  Style P template, from the canonical look (read only). Instantiate with styles/P/build.py, which
+  writes the chapter plan into window.__P and the composition length into every data-duration. Do
+  not edit an instantiated copy by hand.
+
+  The look is unchanged in kind: home-video tape playback with a persistent OSD (blinking REC,
+  running timecode, SP/STOP, date stamp), CRT scanlines, a per-frame seeded noise canvas, chroma
+  bleed, a drifting head-switch band, and tracking-error rolls (skew, jitter, vertical roll, blur and
+  saturation spike, tear band, FF/REW glyph) at every cut. Six scenes keep their devices: a 0.6 s
+  blue PLAY screen; a cassette whose cream label gets the title written on in red marker, over a
+  NOW PLAYING panel; a chapter headline over a REPEAT COUNTER panel; a headline over two CRT TVs
+  where a reviewer set stamps a sloppy "LGTM!!" on wrong work; a cream brief card with a headline
+  stack and one boxed slam word with shake; a final panel whose key word slams in.
+
+  Script-agnostic: build.py splits the words into five chapters at clause ends (balanced, at least
+  1.6 s each) and derives every line of copy and every cue time from the words; the S49 gag decor
+  (doc lines, LGTM stamp, reviewer line) is default copy, overridable with --content.
+
+  Preflight fixes vs the canonical look: every text run renders >= 44 px at 1080 wide (panel
+  headers 32 -> 48 px, chips 36 -> 48, label stripe 26 -> 46, TV knobs 30 -> 48, TV names 32 -> 48,
+  counter caption 30 -> 48, brief-card header 30 -> 48, SP/STOP 44 -> 48), and every auto-fit has a
+  floor (data-min) while build.py caps line lengths so the floor is never hit; the PLAY panel no
+  longer starts at 0.9 scale; the canonical in-scene Keller tile (1.6 s hold, faded in over a roll)
+  is replaced by the shared kit/endcard.js, cut in 0.1 s after the last word and held 2 s with a
+  slow push under the scanlines and noise, so the hold never freezes; its default background is
+  brand cream (#FBF7F0) so the cut from the navy tape scenes is a hard scene change; the lower
+  third carries a framed element in every scene (PLAY: tracking line; final chapter: a TAPE
+  REMAINING panel); and the audio is one bus from kit/sfx_bus.py.
+  Fonts (D4): the canonical's macOS faces are swapped for bundled OFL fonts: Andale Mono (OSD,
+  counter, doc, knobs) -> Comic Shanns (monospace, so the timecode keeps its columns); Futura
+  Condensed ExtraBold and Futura Bold (headlines, label stripe) -> Lilita One; Marker Felt (tape
+  label) -> Virgil; Comic Sans MS (the sloppy LGTM stamp) -> Comic Shanns bold, which keeps the
+  deliberately "wrong font" joke. Avenir Next (the in-scene wordmark) went with the in-scene tile.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Virgil"; font-weight: 300 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #05080e; }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #05080e; }
+#pic { position: absolute; inset: 0; filter: blur(0.7px) saturate(1.15); }
+.scene { position: absolute; inset: 0; opacity: 0; }
+.cb { text-shadow: 4px 0 rgba(255,30,70,.55), -4px 0 rgba(0,210,255,.5); }
+.osd { font-family: "KS Shanns"; color: #fff; letter-spacing: 4px; text-shadow: 3px 3px 0 rgba(0,0,0,.65), 3px 0 rgba(255,30,70,.4), -3px 0 rgba(0,210,255,.4); position: absolute; white-space: nowrap; }
+.bluebg { position:absolute; inset:0; background: radial-gradient(120% 80% at 50% 45%, #1a3a66 0%, #10243E 55%, #0F1B2D 100%); }
+.roombg { position:absolute; inset:0; background: radial-gradient(90% 60% at 50% 42%, #2a2724 0%, #1b1a19 55%, #0d0d0d 100%); }
+.glow { position:absolute; border-radius:50%; filter:blur(60px); }
+.panel { position:absolute; background: linear-gradient(180deg, rgba(22,48,84,.92), rgba(11,22,40,.95)); border:3px solid #2de2e6; border-radius:20px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.6), 0 0 50px rgba(45,226,230,.30), 0 40px 70px rgba(0,0,0,.6), inset 0 0 60px rgba(45,226,230,.08); }
+.panel .ph { position:absolute; left:-3px; right:-3px; top:-3px; height:72px; background:#2de2e6; color:#0F1B2D; border-radius:20px 20px 0 0;
+  font-family:"KS Shanns"; font-size:48px; letter-spacing:3px; line-height:72px; padding:0 22px; font-weight:bold; white-space:nowrap; overflow:hidden; }
+.panel .ph b { float:right; font-weight:normal; opacity:.75; }
+.chip { font-family:"KS Shanns"; font-size:48px; letter-spacing:4px; color:#2de2e6; border:2px solid #2de2e6; padding:4px 16px; position:absolute; box-shadow:0 0 24px rgba(45,226,230,.35); background:rgba(15,27,45,.7); white-space:nowrap; }
+.fit { position:absolute; white-space:nowrap; display:inline-block; font-family:"KS Lilita"; }
+/* cassette */
+#cas { position:absolute; left:110px; top:560px; width:860px; height:540px; background:#202020; border-radius:26px;
+  box-shadow: inset 0 0 0 6px #2c2c2c, inset 0 -40px 60px rgba(0,0,0,.5), 0 40px 80px rgba(0,0,0,.6); }
+#cas .lab { position:absolute; left:60px; top:44px; width:740px; height:250px; background:#FBF7F0; border-radius:6px; overflow:hidden;
+  background-image: repeating-linear-gradient(180deg, transparent 0 58px, rgba(16,36,62,.18) 58px 61px); }
+#cas .stripe { position:absolute; left:0; right:0; top:0; height:62px; background:#10243E; border-radius:6px 6px 0 0; }
+#cas .stripe span { font-family:"KS Lilita"; color:#FBF7F0; font-size:46px; letter-spacing:6px; position:absolute; left:22px; top:4px; line-height:54px; white-space:nowrap; }
+#cas .stripe b { position:absolute; right:22px; top:4px; font-family:"KS Lilita"; color:#FBF7F0; font-size:46px; letter-spacing:4px; font-weight:normal; line-height:54px; }
+#cas .win { position:absolute; left:210px; top:330px; width:440px; height:150px; background:#0a0a0a; border-radius:12px; box-shadow: inset 0 0 0 5px #333; }
+.reel { position:absolute; top:22px; width:106px; height:106px; border-radius:50%; background: radial-gradient(circle, #ddd 0 16px, #3a2a1e 17px 50px, #111 51px); }
+.reel i { position:absolute; left:49px; top:6px; width:8px; height:94px; background:#ddd; }
+.reel i:nth-child(2){ transform: rotate(60deg);} .reel i:nth-child(3){ transform: rotate(120deg);}
+.hand { font-family:"KS Virgil"; color:#10243E; position:absolute; white-space:nowrap; }
+/* tvs */
+.tv { position:absolute; background:#2a2826; border-radius:34px; box-shadow: inset 0 0 0 10px #3a3734, 0 30px 60px rgba(0,0,0,.65), 0 0 40px rgba(45,226,230,.15); }
+.tv .scr { position:absolute; border-radius:50px/36px; background: radial-gradient(#1d3d68, #0F1B2D 80%); overflow:hidden; }
+.tv .knobs { position:absolute; left:40px; right:40px; bottom:14px; height:56px; font-family:"KS Shanns"; color:#a9b0b0; font-size:48px; line-height:56px; letter-spacing:2px; white-space:nowrap; }
+.face { position:absolute; left:0; right:0; top:40px; text-align:center; font-family:"KS Shanns"; color:#fff; font-size:120px; }
+.tvname { position:absolute; left:0; right:0; top:190px; text-align:center; font-family:"KS Lilita"; color:#2de2e6; font-size:48px; letter-spacing:6px; }
+.doc { position:absolute; left:34px; top:26px; width:620px; height:400px; background:#FBF7F0; border-radius:6px; padding:12px 22px; font-family:"KS Shanns"; color:#10243E; box-shadow:0 8px 0 rgba(0,0,0,.25); overflow:hidden; }
+.doc div { white-space:nowrap; }
+.slop { font-family:"KS Shanns"; font-weight:bold; white-space:nowrap; }
+.fit-s { width:max-content; }
+#mag { position:absolute; width:170px; height:170px; border-radius:50%; border:14px solid #f7c948; box-shadow: 0 0 0 4px #000, 0 0 30px rgba(247,201,72,.6); }
+#mag:after { content:""; position:absolute; left:130px; top:132px; width:90px; height:22px; background:#f7c948; transform: rotate(45deg); box-shadow: 0 0 0 4px #000;}
+/* overlays: scanlines and noise also run over the kit end card (z above 9000) so the hold keeps the tape grain */
+#noise { position:absolute; inset:0; width:1080px; height:1920px; image-rendering: pixelated; mix-blend-mode: screen; opacity:.10; z-index:9001; }
+.scan { position:absolute; inset:0; pointer-events:none; background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 3px, rgba(0,0,0,.28) 3px 6px); z-index:9002; }
+.vig { position:absolute; inset:0; pointer-events:none; background: radial-gradient(115% 75% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.75) 100%); }
+#band { position:absolute; left:0; width:1080px; height:150px; opacity:0;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.75) 0 2px, rgba(0,0,0,.35) 2px 5px, rgba(255,255,255,.25) 5px 7px); filter: blur(1px); }
+#band2 { position:absolute; left:0; width:1080px; height:40px; opacity:0; background: rgba(255,255,255,.55); filter: blur(3px); }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__P_DURATION__">
+ <div id="pic">
+  <!-- S0 blue VCR screen (animated) -->
+  <div class="scene" id="s0"><div class="bluebg"></div>
+    <div class="glow" style="left:140px;top:640px;width:800px;height:600px;background:rgba(45,226,230,.28)"></div>
+    <div class="panel" id="s0p" style="left:90px;top:700px;width:900px;height:480px"><div class="ph">VCR &middot; CH 03<b>HI-FI</b></div>
+      <div class="osd" id="s0play" style="left:60px;top:130px;font-size:190px;letter-spacing:8px">&#9654; PLAY</div>
+      <div style="position:absolute;left:60px;right:60px;top:380px;height:34px;border:3px solid #cfd9e6;"><div id="s0bar" style="height:100%;width:0;background:#2de2e6"></div></div>
+    </div>
+    <div class="chip" id="s0trk" style="left:90px;top:1290px">TRACKING &#9646;&#9646;&#9646;&#9646;&#9647;&#9647; AUTO</div>
+  </div>
+  <!-- S1 tape label -->
+  <div class="scene" id="s1"><div class="roombg"></div>
+    <div class="glow" style="left:60px;top:560px;width:960px;height:560px;background:rgba(200,16,46,.20)"></div>
+    <div class="chip" id="tapechip" style="left:90px;top:330px"></div>
+    <div id="cas">
+      <div class="lab"><div class="stripe"><span id="stripe"></span><b id="tapelen"></b></div>
+        <div class="hand fit" id="l1" data-fit="680" data-base="58" data-min="48" style="left:34px;top:76px;font-family:'KS Virgil';transform:rotate(-2deg)"></div>
+        <div class="hand fit" id="l2" data-fit="680" data-base="78" data-min="52" style="left:30px;top:146px;line-height:90px;font-family:'KS Virgil';transform:rotate(-3deg);color:#c8102e"></div>
+        <div id="l2u" style="position:absolute;left:40px;top:236px;height:8px;width:640px;background:#c8102e;border-radius:4px;transform:rotate(-2deg);transform-origin:left"></div>
+      </div>
+      <div class="win"><div class="reel" id="r1" style="left:40px"><i></i><i></i><i></i></div><div class="reel" id="r2" style="left:294px"><i></i><i></i><i></i></div></div>
+    </div>
+    <div class="panel" id="np" style="left:90px;top:1290px;width:900px;height:300px"><div class="ph">NOW PLAYING<b id="npmode"></b></div>
+      <div class="fit" id="npt" data-fit="828" data-base="110" data-min="60" style="left:36px;top:96px;color:#fff;line-height:120px"></div>
+      <div style="position:absolute;left:36px;right:36px;top:236px;height:18px;border:2px solid #2de2e6"><div id="npb" style="height:100%;width:0;background:#2de2e6"></div></div>
+    </div>
+  </div>
+  <!-- S2 chapter headline + repeat counter -->
+  <div class="scene" id="s2"><div class="bluebg" style="filter:brightness(.75)"></div>
+    <div class="glow" style="left:200px;top:900px;width:700px;height:640px;background:rgba(247,201,72,.20)"></div>
+    <div class="chip" id="c2chip" style="left:90px;top:310px"></div>
+    <div class="cb fit" id="h1" data-fit="900" data-base="210" data-min="64" style="left:90px;top:395px;line-height:0.92;color:#fff"></div>
+    <div class="osd" id="h2" style="left:96px;top:800px;font-size:66px;color:#2de2e6"></div>
+    <div class="panel" id="p2" style="left:90px;top:930px;width:900px;height:620px"><div class="ph">REPEAT COUNTER<b>&#9679; LIVE</b></div>
+      <div class="osd" id="ctr" style="left:0;right:0;text-align:center;top:130px;font-size:300px;color:#f7c948;letter-spacing:6px;text-shadow:0 0 40px rgba(247,201,72,.55),4px 0 rgba(255,30,70,.4),-4px 0 rgba(0,210,255,.4)">0000</div>
+      <div id="ticks" style="position:absolute;left:50px;right:50px;top:480px;height:44px;background:repeating-linear-gradient(90deg,#2de2e6 0 4px,transparent 4px 20px);opacity:.7"></div>
+      <div class="osd fit" id="cap" data-fit="800" data-base="48" data-min="48" style="left:50px;top:532px;font-family:'KS Shanns';color:#a9bdd4;letter-spacing:2px"></div>
+    </div>
+  </div>
+  <!-- S3 headline over the two TVs and the LGTM gag -->
+  <div class="scene" id="s3"><div class="roombg"></div>
+    <div class="glow" style="left:100px;top:700px;width:880px;height:620px;background:rgba(45,226,230,.16)"></div>
+    <div class="chip" id="c3chip" style="left:90px;top:290px"></div>
+    <div class="cb fit" id="t3" data-fit="900" data-base="150" data-min="64" style="left:90px;top:372px;line-height:0.95;color:#fff"></div>
+    <div class="tv" id="tvB" style="left:170px;top:735px;width:760px;height:600px"><div class="scr" style="left:36px;top:36px;width:688px;height:450px">
+      <div class="doc" id="docB"><div id="d1" style="font-size:176px;line-height:190px"><span id="d1a"></span><b style="color:#c8102e;display:inline-block" id="five"></b></div><div style="font-size:60px;line-height:80px"><span id="d2a"></span><b style="color:#c8102e" id="d2b"></b></div><div style="font-size:52px;line-height:70px"><span id="d3a"></span><b style="color:#c8102e" id="d3b"></b></div></div></div>
+      <div class="knobs" id="knB"></div></div>
+    <div class="tv" id="tvA" style="left:40px;top:1170px;width:440px;height:410px"><div class="scr" style="left:30px;top:30px;width:380px;height:276px"><div class="face" id="fA">o_o</div><div class="tvname" id="tvAname"></div></div><div class="knobs" id="knA" style="bottom:12px"></div></div>
+    <div id="mag" style="left:640px;top:760px"></div>
+    <div id="stamp" style="position:absolute;left:400px;top:1185px;width:600px;transform:rotate(-8deg);opacity:0">
+      <div class="slop fit-s" id="st1" data-fit="560" data-base="190" data-min="80" style="font-size:190px;line-height:190px;color:#ff3df0;-webkit-text-stroke:12px #fff;paint-order:stroke fill;text-shadow:0 8px 0 #1a1a1a,0 0 30px rgba(255,61,240,.6)"></div>
+      <div class="slop fit-s" id="st2" data-fit="560" data-base="104" data-min="60" style="font-size:104px;line-height:110px;color:#1fbf45;-webkit-text-stroke:10px #fff;paint-order:stroke fill;text-shadow:0 6px 0 #1a1a1a;transform:rotate(5deg) translateX(30px)"></div>
+      <div class="slop fit-s" id="st3" data-fit="540" data-base="92" data-min="60" style="font-size:92px;line-height:100px;color:#ff8a00;-webkit-text-stroke:10px #fff;paint-order:stroke fill;text-shadow:0 6px 0 #1a1a1a;transform:rotate(-4deg) translateX(40px)"></div>
+    </div>
+    <div class="osd" id="wk" style="left:90px;top:652px;font-size:48px;color:#ffe23d"></div>
+  </div>
+  <!-- S4 brief card + headline stack with one boxed slam word -->
+  <div class="scene" id="s4"><div class="bluebg" style="filter:brightness(.7)"></div>
+    <div class="glow" id="s4g" style="left:260px;top:960px;width:560px;height:360px;background:rgba(255,61,90,.0)"></div>
+    <div id="card" style="position:absolute;left:90px;top:310px;width:900px;height:440px;background:#FBF7F0;border-radius:10px;box-shadow:0 0 0 3px #10243E,0 0 50px rgba(45,226,230,.28),0 36px 70px rgba(0,0,0,.65);transform:rotate(-1.2deg)">
+      <div style="position:absolute;left:0;right:0;top:0;height:72px;background:#10243E;border-radius:10px 10px 0 0;font-family:'KS Shanns';color:#FBF7F0;font-size:48px;letter-spacing:2px;line-height:72px;padding:0 24px;white-space:nowrap;overflow:hidden"><span id="cardh"></span><span style="float:right;color:#2de2e6">P.1</span></div>
+      <div class="fit" id="a1" data-fit="820" data-base="92" data-min="60" style="left:40px;top:96px;color:#10243E"></div>
+      <div style="position:absolute;left:40px;top:222px;width:820px;height:16px;background:#10243E;opacity:.28;border-radius:8px"></div>
+      <div id="hl" style="position:absolute;left:40px;top:280px;width:0;height:44px;background:#f7c948;opacity:.8;border-radius:6px"></div>
+      <div style="position:absolute;left:40px;top:286px;width:640px;height:16px;background:#10243E;opacity:.28;border-radius:8px"></div>
+      <div style="position:absolute;left:40px;top:346px;width:760px;height:16px;background:#10243E;opacity:.28;border-radius:8px"></div>
+      <div style="position:absolute;left:40px;top:396px;width:420px;height:16px;background:#10243E;opacity:.28;border-radius:8px"></div>
+    </div>
+    <div class="cb fit" id="a2" data-fit="900" data-base="200" data-min="64" style="left:90px;top:800px;line-height:200px;color:#fff"></div>
+    <div class="cb fit" id="a3" data-fit="420" data-base="190" data-min="64" style="left:90px;top:1000px;line-height:190px;color:#fff"></div>
+    <div id="a4" style="position:absolute;left:300px;top:1005px;padding:0 34px;border:12px solid #ff3d5a;color:#ff3d5a;font-family:'KS Lilita';font-size:170px;line-height:180px;white-space:nowrap;transform:rotate(-6deg);background:rgba(255,61,90,.12);box-shadow:0 0 50px rgba(255,61,90,.5)"></div>
+    <div class="cb fit" id="a5" data-fit="900" data-base="220" data-min="64" style="left:90px;top:1230px;line-height:220px;color:#f7c948;text-shadow:0 0 40px rgba(247,201,72,.4),4px 0 rgba(255,30,70,.55),-4px 0 rgba(0,210,255,.5)"></div>
+    <div class="chip" id="pz" style="left:90px;top:1500px;font-size:56px;padding:6px 22px;border-color:#fff;color:#fff">&#10074;&#10074; PAUSE</div>
+  </div>
+  <!-- S5 final panel: key word slam, tape remaining -->
+  <div class="scene" id="s5"><div class="bluebg"></div>
+    <div class="glow" style="left:240px;top:380px;width:600px;height:520px;background:rgba(45,226,230,.24)"></div>
+    <div class="panel" id="bp" style="left:90px;top:330px;width:900px;height:620px"><div class="ph"><span id="b0"></span><b>&#9679;</b></div>
+      <svg id="icon-bank" viewBox="0 0 400 260" style="position:absolute;left:290px;top:110px;width:320px;height:208px;transform-origin:50% 40%;display:none" fill="#FBF7F0">
+        <path d="M200 0 L390 70 L10 70 Z"/><rect x="20" y="78" width="360" height="16"/>
+        <rect x="45" y="104" width="34" height="116"/><rect x="128" y="104" width="34" height="116"/><rect x="238" y="104" width="34" height="116"/><rect x="321" y="104" width="34" height="116"/>
+        <rect x="10" y="228" width="380" height="30"/></svg>
+      <svg id="icon-tape" viewBox="0 0 400 260" style="position:absolute;left:290px;top:110px;width:320px;height:208px;transform-origin:50% 40%;display:none" fill="none" stroke="#FBF7F0" stroke-width="16">
+        <rect x="12" y="12" width="376" height="236" rx="22"/><rect x="60" y="40" width="280" height="70" rx="8" fill="#FBF7F0"/>
+        <circle cx="130" cy="170" r="36"/><circle cx="270" cy="170" r="36"/><path d="M130 206 L270 206"/></svg>
+      <div class="cb fit" id="b1" data-fit="820" data-base="190" data-min="90" style="left:40px;top:350px;line-height:210px;color:#fff"></div>
+    </div>
+    <div class="panel" id="rp" style="left:90px;top:1020px;width:900px;height:520px"><div class="ph">TAPE REMAINING<b>&#9724; EOT</b></div>
+      <div class="osd" id="rem" style="left:0;right:0;text-align:center;top:120px;font-size:150px;color:#f7c948;letter-spacing:4px;text-shadow:0 0 40px rgba(247,201,72,.5),4px 0 rgba(255,30,70,.4),-4px 0 rgba(0,210,255,.4)">-0:00:00</div>
+      <div style="position:absolute;left:50px;right:50px;top:340px;height:40px;border:3px solid #2de2e6"><div id="remb" style="height:100%;width:100%;background:#2de2e6"></div></div>
+      <div class="osd" style="left:50px;top:410px;font-size:48px;color:#a9bdd4;letter-spacing:2px">&#9664;&#9664; REW &nbsp; &#9654;&#9654; FF</div>
+    </div>
+  </div>
+ </div>
+ <canvas id="noise" width="270" height="480"></canvas>
+ <div id="band"></div><div id="band2"></div>
+ <div class="scan"></div><div class="vig"></div>
+ <!-- persistent OSD -->
+ <div class="osd" id="rec" style="left:80px;top:110px;font-size:52px"><span id="dot" style="color:#ff2a3a">&#9679;</span> REC</div>
+ <div class="osd" id="tc" style="right:80px;top:110px;font-size:52px">0:00:00:00</div>
+ <div class="osd" id="mode" style="left:80px;top:190px;font-size:48px;color:#cfd9e6">SP</div>
+ <div class="osd" id="trans" style="left:0;right:0;top:860px;text-align:center;font-size:170px;opacity:0">&#9654;&#9654;</div>
+ <div class="osd" id="date" style="right:80px;bottom:190px;font-size:48px;text-align:right"></div>
+ <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__P_VO_DURATION__" data-volume="1"></audio>
+ <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__P_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+window.__P = /*__P_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__P, FPS = 30;
+  var root = document.getElementById("root");
+  var END = parseFloat(root.getAttribute("data-duration"));
+  var $ = function (i) { return document.getElementById(i); };
+  var EC = D.endcard.start;
+  var S = [$("s0"), $("s1"), $("s2"), $("s3"), $("s4"), $("s5")];
+  var CUT = [0].concat(D.cuts).concat([END + 1]);
+  var TR = D.cuts.map(function (c, i) { return { t: c, g: D.glyphs[i] }; });
+  var C1 = D.ch1, C2 = D.ch2, C3 = D.ch3, C4 = D.ch4, C5 = D.ch5;
+  function set(id, txt) { $(id).textContent = txt; }
+
+  // static copy from the plan
+  set("tapechip", D.tapeChip); set("stripe", D.brandName.toUpperCase()); set("tapelen", "T-120");
+  set("l1", C1.l1.text); set("l2", C1.title.text); set("npmode", "T-120 · SP");
+  set("c2chip", "CHAPTER 2"); $("h1").innerHTML = ""; C2.head.forEach(function (ln, i) { if (i) $("h1").appendChild(document.createElement("br")); $("h1").appendChild(document.createTextNode(ln)); });
+  set("cap", C2.caption);
+  set("c3chip", "CHAPTER 3"); C3.head.forEach(function (ln, i) { if (i) $("t3").appendChild(document.createElement("br")); $("t3").appendChild(document.createTextNode(ln)); });
+  set("d1a", C3.doc[0][0]); set("five", C3.doc[0][1]); set("d2a", C3.doc[1][0]); set("d2b", C3.doc[1][1]); set("d3a", C3.doc[2][0]); set("d3b", C3.doc[2][1]);
+  set("knB", C3.knobB); set("knA", C3.knobA); set("tvAname", C3.tvA);
+  set("st1", C3.stamp[0]); set("st2", C3.stamp[1]); set("st3", C3.stamp[2]);
+  set("cardh", C4.cardHead);
+  set("a2", C4.pre1.text); set("a3", C4.pre2.text); set("a4", C4.slam.text); set("a5", C4.post.text);
+  set("b0", C5.head); set("b1", C5.slam.text);
+  var icon = $(C5.icon === "bank" ? "icon-bank" : "icon-tape"); icon.style.display = "block";
+  $("date").innerHTML = D.date[0] + "<br>" + D.date[1];
+
+  var nc = $("noise").getContext("2d"), img = nc.createImageData(270, 480);
+  function cl(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function oc(x) { x = cl(x); return 1 - Math.pow(1 - x, 3); }
+  function bo(x) { x = cl(x); var c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); }
+  function pin(t, a, d) { return oc((t - a) / (d || .35)); }
+  function rnd(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  function show(el, p, dy) { el.style.opacity = p; el.style.transform = "translateY(" + ((1 - p) * (dy || 40)) + "px)"; }
+  function typed(el, txt, t, a, cps) { var n = Math.max(0, Math.floor((t - a) * cps)); el.textContent = txt.slice(0, n) + (n < txt.length && t >= a ? "_" : ""); el.style.opacity = t >= a ? 1 : 0; }
+  // fit text to a max width with a floor (one line per block, no hyphen breaks); build.py caps
+  // line lengths so the floor is not reached with the bundled fonts
+  var FITS = [].slice.call(document.querySelectorAll("[data-fit]"));
+  function fit() { FITS.forEach(function (el) { var base = +el.dataset.base, max = +el.dataset.fit, mn = +(el.dataset.min || 48); el.style.fontSize = base + "px"; var w = el.offsetWidth; if (w > max) el.style.fontSize = Math.max(mn, Math.floor(base * max / w)) + "px"; }); }
+  function tc(t) { var f = Math.round(t * FPS), sec = Math.floor(t), fr = f % FPS, m = Math.floor(sec / 60), s = sec % 60;
+    return "0:" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s + ":" + (fr < 10 ? "0" : "") + fr; }
+
+  function draw(t) {
+    fit();
+    var f = Math.round(t * FPS);
+    for (var i = 0; i < S.length; i++) S[i].style.opacity = (t >= CUT[i] && t < CUT[i + 1]) ? 1 : 0;
+    var roll = 0, tg = null;
+    for (var k = 0; k < TR.length; k++) { var d = t - TR[k].t; if (d > -.22 && d < .28) { roll = 1 - Math.abs(d - .03) / .25; tg = TR[k].g; } }
+    roll = cl(roll);
+    var pic = $("pic");
+    var jx = roll * (rnd(f) - .5) * 70, vy = roll * (rnd(f + 9) - .3) * 260;
+    pic.style.transform = "translate(" + jx + "px," + vy + "px) skewX(" + (roll * (rnd(f + 3) - .5) * 8) + "deg)";
+    pic.style.filter = "blur(" + (0.7 + roll * 2.5) + "px) saturate(" + (1.15 + roll) + ")";
+    var band = $("band"), b2 = $("band2");
+    band.style.opacity = roll ? .9 : .18; band.style.top = (roll ? (rnd(f + 1) * 1700) : ((t * 140) % 2100) - 150) + "px";
+    b2.style.opacity = roll * .8; b2.style.top = (rnd(f + 5) * 1880) + "px";
+    var tr = $("trans"); tr.style.opacity = roll > .05 ? 1 : 0; if (tg) tr.innerHTML = tg;
+    var dd = img.data, s = f * 7.31 + 1;
+    for (var p = 0; p < dd.length; p += 4) { s = (s * 16807) % 2147483647; var v = s & 255; dd[p] = dd[p + 1] = dd[p + 2] = v; dd[p + 3] = 255; }
+    nc.putImageData(img, 0, 0);
+    $("noise").style.opacity = .08 + roll * .35;
+    $("dot").style.opacity = (Math.floor(t * 2) % 2) ? .15 : 1;
+    $("tc").textContent = tc(t);
+    $("mode").textContent = t > D.stopT ? "■ STOP" : "▶ SP";
+
+    // S0: PLAY, animated
+    var c0 = D.cuts[0];
+    var z0 = bo(t / .3); $("s0p").style.transform = "scale(" + (.96 + .04 * z0) + ")";
+    $("s0bar").style.width = (cl(t / (c0 - .05)) * 100) + "%";
+    $("s0play").style.opacity = (Math.floor(t * 10) % 2) ? .8 : 1;
+    // S1 cassette (visible at the cut, settles in); title written on in marker
+    var c1 = pin(t, c0, .4);
+    $("cas").style.transform = "translateY(" + ((1 - c1) * 160 - (t - c0) * 10) + "px) rotate(" + (-1.5 + (1 - c1) * 3) + "deg) scale(" + (1.12 + (t - c0) * .012) + ")";
+    $("r1").style.transform = "rotate(" + t * 220 + "deg)"; $("r2").style.transform = "rotate(" + t * 220 + "deg)";
+    show($("l1"), pin(t, C1.l1.t, .3), 20); $("l1").style.transform += " rotate(-2deg)";
+    var l2 = $("l2"), w2 = cl((t - C1.title.t) / C1.title.wipe);
+    l2.style.clipPath = "inset(0 " + (100 - w2 * 100) + "% 0 0)";
+    $("l2u").style.width = Math.min(640, l2.offsetWidth) + "px";
+    $("l2u").style.transform = "rotate(-2deg) scaleX(" + oc((t - (C1.title.t + .75 * C1.title.wipe)) / .4) + ")";
+    show($("np"), pin(t, c0 + .02, .3), 60);
+    $("npt").textContent = t < C1.title.t ? C1.np : C1.title.np;
+    $("npb").style.width = (cl((t - c0) / (D.cuts[1] - c0)) * 100) + "%";
+    // S2: headline at the cut, typed sub-line, counter
+    var k2 = D.cuts[1];
+    var h1 = bo((t - k2) / .4); $("h1").style.opacity = cl((t - k2) * 15); $("h1").style.transform = "scale(" + (.85 + .15 * h1) + ")"; $("h1").style.transformOrigin = "left center";
+    if (C2.sub.text) typed($("h2"), C2.sub.text, t, C2.sub.t, 22); else $("h2").style.opacity = 0;
+    show($("p2"), pin(t, k2 + .05, .35), 60);
+    var cn = Math.min(C2.counterEnd, Math.floor(Math.pow(cl((t - C2.counterT) / C2.counterDur), 2) * C2.counterEnd));
+    $("ctr").textContent = ("000" + cn).slice(-4);
+    $("ticks").style.backgroundPosition = (-t * 260) + "px 0";
+    // S3: headline, TVs slide in, magnifier sweep, sloppy stamp, reviewer line
+    var k3 = D.cuts[2];
+    show($("t3"), pin(t, k3, .15), 20);
+    var a = pin(t, k3 + .1, .4), b = pin(t, k3, .35);
+    $("tvA").style.transform = "translateX(" + (-(1 - a) * 700) + "px)"; $("tvB").style.transform = "translateX(" + ((1 - b) * 900) + "px)";
+    $("fA").textContent = t < C3.magT + .2 ? "o_o" : t < C3.stampT ? "⊙_⊙" : "^_^";
+    var m = cl((t - C3.magT) / .75), mg = $("mag");
+    mg.style.opacity = t > C3.magT - .05 && t < C3.stampT + .1 ? 1 : 0;
+    mg.style.transform = "translate(" + (Math.sin(m * 6.28) * 60) + "px," + (m * 90) + "px)";
+    $("five").style.transform = "scale(" + (1 + (t > C3.magT && t < C3.stampT ? .12 * Math.abs(Math.sin(t * 14)) : 0)) + ")";
+    var st = $("stamp"), sp = cl((t - C3.stampT) / .18);
+    st.style.opacity = sp; st.style.transform = "rotate(-8deg) scale(" + (2.2 - 1.2 * sp + Math.sin(t * 9) * .02 * sp) + ")";
+    typed($("wk"), C3.reviewer, t, C3.stampT + .1, 40);
+    // S4: brief card hero at the cut, glides up as the stack fills in; boxed slam word with shake
+    var k4 = D.cuts[3];
+    var cp = pin(t, k4, .2); $("card").style.opacity = cp; var mv = oc((t - C4.glideT) / .35); $("card").style.transform = "translateY(" + ((1 - mv) * 500 + (1 - cp) * 60) + "px) scale(" + (1 + .18 * (1 - mv)) + ") rotate(-1.2deg)";
+    typed($("a1"), C4.lead, t, k4 + .05, 18); $("a1").style.opacity = 1;
+    $("hl").style.width = (cl((t - (C4.glideT + .3)) / .4) * 640) + "px";
+    show($("a2"), C4.pre1.text ? pin(t, C4.pre1.t, .3) : 0);
+    show($("a3"), C4.pre2.text ? pin(t, C4.pre2.t, .25) : 0);
+    var a3w = C4.pre2.text ? $("a3").offsetWidth + 40 : 0, a4 = $("a4");
+    a4.style.left = (90 + a3w) + "px";
+    a4.style.fontSize = "170px"; var room = 990 - (90 + a3w); if (a4.offsetWidth > room) a4.style.fontSize = Math.max(90, Math.floor(170 * room / a4.offsetWidth)) + "px";
+    var n4 = cl((t - C4.slam.t) / .14);
+    a4.style.opacity = n4; a4.style.transform = "rotate(-6deg) scale(" + (2.4 - 1.4 * n4) + ")";
+    $("s4g").style.background = "rgba(255,61,90," + (.3 * n4) + ")";
+    show($("a5"), C4.post.text ? pin(t, C4.post.t, .3) : 0);
+    var shake = (t > C4.slam.t && t < C4.slam.t + .32) ? (rnd(f + 40) - .5) * 30 : 0;
+    $("s4").style.transform = "translate(" + shake + "px," + (rnd(f + 41) - .5) * shake + "px)";
+    var k5 = D.cuts[4];
+    // deck status chip: PLAY while the stack builds, then a blinking PAUSE (keeps the lower third framed)
+    var paused = t > C4.pauseT;
+    $("pz").innerHTML = paused ? "&#10074;&#10074; PAUSE" : "&#9654; PLAY";
+    $("pz").style.opacity = paused ? (Math.floor(t * 4) % 2 === 0 ? 1 : .55) : pin(t, k4 + .1, .3);
+    // S5: panel at the cut, key word slams on its spoken word, tape remaining counts down to the card
+    var bpp = pin(t, k5, .2); $("bp").style.opacity = bpp; $("bp").style.transform = "translateY(" + (1 - bpp) * 50 + "px)";
+    var bk = bo((t - C5.slam.t) / .35); $("b1").style.opacity = cl((t - C5.slam.t) * 10); $("b1").style.transform = "scale(" + (.8 + .2 * bk) + ")"; $("b1").style.transformOrigin = "center";
+    $("b1").style.left = (($("bp").offsetWidth - $("b1").offsetWidth) / 2 - 3) + "px";
+    var bz = oc((t - C5.slam.t) / .35); icon.style.transform = "translateY(" + (1 - bz) * 70 + "px) scale(" + (1 + .3 * (1 - bz)) + ")";
+    show($("rp"), pin(t, k5, .2), 60);
+    var rem = Math.max(0, EC - t); $("rem").textContent = "-" + tc(rem).slice(2);  // "-MM:SS:FF" fits the panel at 150 px
+    $("remb").style.width = (cl(rem / Math.max(.1, EC - k5)) * 100) + "%";
+  }
+
+  draw(0);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(0); });
+  var tl = gsap.timeline({ paused: true }), clock = { t: 0 };
+  tl.to(clock, { t: END, duration: END, ease: "none", onUpdate: function () { draw(clock.t); } }, 0);
+
+  // end card (kit/endcard.js) by a hard cut; a slow push keeps the hold moving under the tape grain
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style P: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.set({}, {}, END);
+  window.__timelines["main"] = tl;
+  window.__cues = { cuts: D.cuts, endcard: plan.start, stop: D.stopT };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en" data-format="portrait">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style D: reel-native, __D_TITLE__</title>
+<!--
+  Style D (REEL-NATIVE) template, ported from the dir-D reference look.
+  Instantiated by styles/D/build.py: it injects the beat plan (window.__D) and writes the
+  composition length into every data-duration. Do not edit an instantiated copy by hand;
+  change this template and rebuild.
+
+  Six acts, as in dir-D, cut on phrase boundaries of the narration (build.py picks them):
+    a0 type-on + particle morph to a node field     a1 run trace through the field
+    a2 scribble burst                               a3 glitch cut to a ruled ledger
+    a4 plan line locks onto the run                 a5 zoom-through to a stamp ring
+  then the shared Keller AI end card (kit/endcard.js) by a hard cut.
+  dir-D times are kept as written and mapped onto the new acts with T() (piecewise linear
+  between act boundaries); snappy transitions keep their dir-D durations and are anchored
+  to the act edges.
+  Determinism: seeded PRNG only, every text change is a tl.set, one paused timeline.
+  Changes vs dir-D for the preflight: meaningful type >= 44 px; the bottom-left HUD label
+  is a legible persistent lower-third element; grain stays above the end card (no frozen
+  hold); end card per kit/endcard.js; audio through kit/sfx_bus.py.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "Helvetica Neue"; font-weight: 400; font-style: normal; src: local("Helvetica Neue"), local("HelveticaNeue"); }
+@font-face { font-family: "Helvetica Neue"; font-weight: 500; font-style: normal; src: local("Helvetica Neue Medium"), local("HelveticaNeue-Medium"); }
+@font-face { font-family: "Helvetica Neue"; font-weight: 700; font-style: normal; src: local("Helvetica Neue Bold"), local("HelveticaNeue-Bold"); }
+@font-face { font-family: "Arial"; font-weight: 400; font-style: normal; src: local("Arial"), local("ArialMT"); }
+@font-face { font-family: "Arial"; font-weight: 700; font-style: normal; src: local("Arial Bold"), local("Arial-BoldMT"); }
+@font-face { font-family: "Menlo"; font-weight: 400; font-style: normal; src: local("Menlo Regular"), local("Menlo-Regular"); }
+@font-face { font-family: "Menlo"; font-weight: 700; font-style: normal; src: local("Menlo Bold"), local("Menlo-Bold"); }
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+</style>
+<style>
+  :root {
+    --ink: #05060a;
+    --acc: #ff8f2e;
+    --acc-hi: #ffb455;
+    --blu: #4da6ff;
+    --grn: #6dcf91;
+    --hud: rgba(200, 204, 212, 0.55);
+    --hud-dim: rgb(150, 154, 161);
+    --mono: Menlo, "Helvetica Neue", Arial;
+    --disp: "Helvetica Neue", Arial;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+  body { color: #f2f0ea; font-family: var(--disp); }
+  #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--ink); }
+  .full { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #bg { background: radial-gradient(ellipse 75% 42% at 50% 40%, #0e1118 0%, #080a0f 55%, #040507 100%); }
+  svg.full { overflow: visible; }
+
+  /* ---------- HUD ---------- */
+  .br { position: absolute; width: 44px; height: 44px; border-color: var(--hud); border-style: solid; border-width: 0; }
+  .br.tl { left: 44px; top: 44px; border-left-width: 2px; border-top-width: 2px; }
+  .br.tr { right: 44px; top: 44px; border-right-width: 2px; border-top-width: 2px; }
+  .br.bl { left: 44px; bottom: 44px; border-left-width: 2px; border-bottom-width: 2px; }
+  .br.brr { right: 44px; bottom: 44px; border-right-width: 2px; border-bottom-width: 2px; }
+  .hud { position: absolute; font-family: var(--mono); font-size: 44px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap; }
+  .hud b { color: #ecebe7; font-weight: 700; }
+  .hud .a { color: var(--acc); font-weight: 700; }
+  .hud.chrome { font-size: 21px; letter-spacing: 0.14em; }
+  #hud-tl { left: 84px; top: 74px; }
+  #hud-tr { right: 84px; top: 82px; text-align: right; color: #e6e5e1; }
+  #hud-tr2 { right: 84px; top: 114px; text-align: right; font-size: 15px; color: rgb(120,123,129); }
+  #hud-bl { left: 84px; bottom: 70px; }
+  #hud-br { right: 84px; bottom: 84px; text-align: right; }
+  .sq { display: inline-block; width: 16px; height: 16px; margin-left: 9px; background: rgba(140,145,155,0.35); vertical-align: -1px; }
+
+  /* ---------- kicker + headline ---------- */
+  .kick { position: absolute; left: 84px; top: 1384px; font-family: var(--mono); font-size: 44px; font-weight: 700;
+          letter-spacing: 0.12em; color: var(--acc); white-space: nowrap; opacity: 0; }
+  .kick .rule { display: inline-block; width: 40px; height: 3px; background: var(--acc); vertical-align: 13px; margin-right: 18px; }
+  .kick .dim { color: rgba(255,163,86,0.92); }
+  .hl { position: absolute; left: 54px; top: 1450px; width: 1000px; font-family: var(--disp); font-weight: 700;
+        font-size: 112px; line-height: 1; letter-spacing: -0.022em; text-transform: uppercase; visibility: hidden; opacity: 0; }
+  .ln { display: block; overflow: hidden; padding: 6px 0 10px 30px; white-space: nowrap; }
+  .ch { display: inline-block; white-space: pre; }
+  .ln.w .ch { text-shadow: 0 0 22px rgba(255, 238, 215, 0.22); }
+  .ln.o .ch { text-shadow: 0 0 26px rgba(255, 140, 50, 0.38); }
+  .ln.b .ch { text-shadow: 0 0 26px rgba(77, 166, 255, 0.40); }
+
+  /* ---------- type-on (a0) ---------- */
+  #typeon { position: absolute; left: 84px; top: 1440px; font-family: var(--mono); white-space: pre; }
+  #typeon .l1 { font-size: 48px; color: #dcdfe5; position: relative; }
+  #typeon .l2 { font-size: 44px; color: rgba(170,175,185,0.92); margin-top: 26px; letter-spacing: 0.02em; }
+  #typeon .t { opacity: 0; }
+  #typeon .p { color: var(--acc); font-weight: 700; }
+  #cursor { position: absolute; left: 0; top: 6px; width: 26px; height: 48px; background: var(--acc); }
+
+  /* ---------- svg text ---------- */
+  .lab { font-family: var(--mono); font-size: 44px; font-weight: 700; letter-spacing: 0.06em; fill: #e9e8e4; }
+  .row-name { font-family: var(--disp); font-weight: 700; font-size: 52px; letter-spacing: -0.01em; fill: #e9e7e1; }
+  .row-idx { font-family: var(--mono); font-weight: 700; font-size: 44px; letter-spacing: 0.08em; fill: var(--acc); }
+  .ro-lab { font-family: var(--mono); font-size: 44px; letter-spacing: 0.1em; fill: rgba(170,175,185,0.9); }
+  .ro-big { font-family: var(--mono); font-weight: 700; font-size: 64px; fill: #f0eee8; }
+
+  /* ---------- checks (a5) ---------- */
+  #chips { position: absolute; left: 0; top: 1010px; width: 1080px; display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 16px; padding: 0 90px; }
+  .chip { font-family: var(--mono); font-size: 44px; letter-spacing: 0.04em; color: #d9d8d3; padding: 8px 18px 8px 14px;
+          border: 2px solid rgba(160,165,175,0.32); border-radius: 10px; background: rgba(20,24,32,0.55); opacity: 0; }
+  .chip i { font-style: normal; color: var(--grn); font-weight: 700; margin-right: 12px; }
+
+  /* ---------- end-card footer (lower third over the kit end card) ---------- */
+  #ecfoot { position: absolute; left: 0; bottom: 150px; width: 1080px; text-align: center; z-index: 9100;
+            font-family: var(--mono); font-size: 44px; font-weight: 700; letter-spacing: 0.16em; color: #FBF7F0; visibility: hidden; opacity: 0; }
+  #ecfoot .rule { display: block; width: 120px; height: 3px; margin: 0 auto 30px; background: var(--acc); }
+
+  /* ---------- texture (grain sits above the end card so the hold is never a frozen frame) ---------- */
+  #grain { position: absolute; left: -120px; top: -120px; width: 1320px; height: 2160px; opacity: 0.075; mix-blend-mode: screen; z-index: 9500;
+           background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='330' height='330'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.6 -0.35'/></filter><rect width='330' height='330' filter='url(%23n)'/></svg>");
+           background-size: 330px 330px; }
+  #vig { background: radial-gradient(ellipse 80% 62% at 50% 44%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.62) 100%); }
+  .gbar { position: absolute; left: 0; width: 1080px; opacity: 0; mix-blend-mode: screen; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__D_DURATION__">
+  <div id="bg" class="full"></div>
+
+  <!-- a0-a2: node field + run trace + scribbles -->
+  <div id="stageA" class="full">
+    <svg id="field" class="full" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow" filterUnits="userSpaceOnUse" x="-200" y="-200" width="1480" height="2320">
+          <feGaussianBlur stdDeviation="5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow2" filterUnits="userSpaceOnUse" x="-200" y="-200" width="1480" height="2320">
+          <feGaussianBlur stdDeviation="12" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g id="dust"></g>
+      <g id="edges"></g>
+      <g id="scrib"></g>
+      <g id="nodes"></g>
+      <path id="route" d="" fill="none" stroke="#ff8f2e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+      <g id="rnodes"></g>
+      <g id="head">
+        <circle id="ripple" cx="0" cy="0" r="20" fill="none" stroke="#ff8f2e" stroke-width="2" opacity="0"/>
+        <circle cx="0" cy="0" r="24" fill="none" stroke="#ff8f2e" stroke-width="1.5" opacity="0.45"/>
+        <circle cx="0" cy="0" r="10" fill="#ffb455" filter="url(#glow2)"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- a3-a4: ledger, plan lock -->
+  <div id="stageB" class="full" style="opacity:0">
+    <svg id="ledger" class="full" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+      <g id="ticks"></g>
+      <g id="plan" opacity="0">
+        <line id="planline" x1="0" y1="360" x2="0" y2="1225" stroke="#4da6ff" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="1 12"/>
+        <g id="pnodes"></g>
+        <text id="planlab" class="lab" x="0" y="318" text-anchor="middle" style="fill:#4da6ff">PLAN</text>
+      </g>
+      <line id="ledline" x1="200" y1="360" x2="200" y2="1225" stroke="#ff8f2e" stroke-width="3.2" stroke-linecap="round" filter="url(#glow)"/>
+      <text id="runlab" class="lab" x="200" y="318" text-anchor="middle" style="fill:#ff8f2e" opacity="0">RUN</text>
+      <g id="rows"></g>
+      <circle id="pulse" cx="200" cy="360" r="9" fill="#ffd9a8" filter="url(#glow2)" opacity="0"/>
+      <g id="readout" opacity="0">
+        <text class="ro-lab" x="980" y="236" text-anchor="end">LOCKED</text>
+        <text id="ro-num" class="ro-big" x="980" y="306" text-anchor="end">0/6</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- a5: stamp ring -->
+  <div id="stageC" class="full" style="opacity:0">
+    <svg id="stamp" class="full" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffb455" stop-opacity="0.30"/>
+          <stop offset="55%" stop-color="#ff8f2e" stop-opacity="0.06"/>
+          <stop offset="100%" stop-color="#ff8f2e" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <g id="ringwrap">
+        <circle cx="540" cy="640" r="320" fill="none" stroke="rgba(150,155,165,0.28)" stroke-width="1.2" stroke-dasharray="2 9"/>
+        <circle cx="540" cy="640" r="200" fill="url(#core)"/>
+        <g id="rticks"></g>
+        <circle id="ring" cx="540" cy="640" r="250" fill="none" stroke="#ff9a3a" stroke-width="5" filter="url(#glow)"/>
+        <path id="check" d="M 470 642 L 522 692 L 620 584" fill="none" stroke="#fff3e2" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow2)"/>
+      </g>
+      <text id="cnt" class="lab" x="540" y="790" text-anchor="middle" opacity="0">0 / 6</text>
+    </svg>
+    <div id="chips"></div>
+  </div>
+
+  <div id="gbars" class="full" data-layout-allow-occlusion></div>
+  <div id="vig" class="full" data-layout-allow-occlusion></div>
+
+  <div id="typeon"><div class="l1"></div><div class="l2"></div></div>
+  <div id="kicks"></div>
+  <div id="hls"></div>
+
+  <div id="grain" data-layout-allow-occlusion></div>
+
+  <!-- HUD. TC and the format line are timecode chrome, not reading copy (dir-D sizes kept). -->
+  <div class="br tl"></div><div class="br tr"></div><div class="br bl"></div><div class="br brr"></div>
+  <div class="hud" id="hud-tl"><b>KELLER AI</b></div>
+  <div class="hud chrome" id="hud-tr" data-legibility="ignore">TC 00:00:00:00</div>
+  <div class="hud chrome" id="hud-tr2" data-legibility="ignore">1080×1920 · 30 FPS · 9:16</div>
+  <div class="hud" id="hud-bl"><span class="a" id="bl-n">00/05</span>&nbsp;<span id="bl-t">TYPE-ON</span></div>
+  <div class="hud" id="hud-br"><span class="sq"></span><span class="sq"></span><span class="sq"></span><span class="sq"></span><span class="sq"></span><span class="sq"></span></div>
+
+  <div id="ecfoot"><span class="rule"></span><span id="ecfoot-t"></span></div>
+
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__D_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__D_DURATION__" data-volume="1"></audio>
+</div>
+
+<script>window.__D = /*__D_DATA__*/null;</script>
+<script>
+(function () {
+  var D = window.__D;
+  var NS = "http://www.w3.org/2000/svg";
+  var FPS = 30;
+  var root = document.getElementById("root");
+  var END = parseFloat(root.getAttribute("data-duration"));
+  var B = D.bounds;                       // 7 act edges: B[0]=0 ... B[6]=end-card cut
+  var ORIG = [0, 2.04, 3.72, 5.14, 6.62, 8.98, 10.16];   // dir-D act edges
+  var ACC = "#ff8f2e", ACC_HI = "#ffb455", BLU = "#4da6ff";
+
+  // dir-D time -> this piece's time, piecewise linear between act edges
+  function T(t) {
+    if (t <= 0) return 0;
+    for (var i = 1; i < ORIG.length; i++) if (t <= ORIG[i]) return B[i - 1] + (t - ORIG[i - 1]) * (B[i] - B[i - 1]) / (ORIG[i] - ORIG[i - 1]);
+    return B[6] + (t - ORIG[6]);
+  }
+  function TD(t, d) { return Math.max(0.05, T(t + d) - T(t)); }
+
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function mk(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  function $(s) { return document.querySelector(s); }
+  function $$(s) { return Array.prototype.slice.call(document.querySelectorAll(s)); }
+  function hex(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
+  function lerpc(a, b, f) { var A = hex(a), Bc = hex(b); return "rgb(" + A.map(function (v, i) { return Math.round(v + (Bc[i] - v) * f); }).join(",") + ")"; }
+
+  var tl = gsap.timeline({ paused: true });
+
+  /* ================= kickers + headlines from the plan ================= */
+  var kHost = $("#kicks"), hHost = $("#hls");
+  D.acts.forEach(function (a, i) {
+    var k = document.createElement("div"); k.className = "kick"; k.id = "k" + i;
+    k.innerHTML = '<span class="rule"></span>0' + i + ' · <span class="dim"></span>';
+    k.querySelector(".dim").textContent = a.kicker; kHost.appendChild(k);
+    if (i === 0) return;
+    var h = document.createElement("div"); h.className = "hl"; h.id = "h" + i;
+    a.lines.forEach(function (txt, li) {
+      var ln = document.createElement("div");
+      ln.className = "ln " + (li === a.lines.length - 1 && a.lines.length > 1 ? (i === 4 ? "b" : "o") : (a.lines.length === 1 ? "o" : "w"));
+      ln.setAttribute("data-text", txt); h.appendChild(ln);
+    });
+    hHost.appendChild(h);
+  });
+  // fit: shrink a headline until every line fits the 1000 px block (never under 64 px)
+  $$(".hl").forEach(function (h) {
+    var fs = 112; h.style.fontSize = fs + "px";
+    $$("#" + h.id + " .ln").forEach(function (ln) { ln.textContent = ln.getAttribute("data-text"); });
+    var tooWide = function () { return $$("#" + h.id + " .ln").some(function (ln) { return ln.scrollWidth > 1000 - 40; }); };
+    while (tooWide() && fs > 64) { fs -= 4; h.style.fontSize = fs + "px"; }
+    h.setAttribute("data-fit-px", String(fs));
+  });
+  var GRAD = { w: ["#aeb0ae", "#f7f4ec"], o: ["#f08436", "#ffc271"], b: ["#3a86dd", "#a6d4ff"] };
+  $$(".hl .ln").forEach(function (ln) {
+    var key = ln.classList.contains("o") ? "o" : ln.classList.contains("b") ? "b" : "w";
+    var txt = ln.getAttribute("data-text"); ln.textContent = "";
+    var n = txt.length;
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement("span"); s.className = "ch"; s.textContent = txt[i];
+      s.style.color = lerpc(GRAD[key][0], GRAD[key][1], n > 1 ? i / (n - 1) : 1);
+      ln.appendChild(s);
+    }
+  });
+  function riseIn(id, t) {
+    tl.set("#" + id, { autoAlpha: 1 }, t);
+    $$("#" + id + " .ln").forEach(function (ln, li) {
+      tl.fromTo(ln.querySelectorAll(".ch"), { yPercent: 118, opacity: 0, filter: "blur(12px)" },
+        { yPercent: 0, opacity: 1, filter: "blur(0px)", duration: 0.55, ease: "expo.out", stagger: 0.026, immediateRender: false }, t + li * 0.13);
+    });
+  }
+  function glitchOut(id, t) {
+    var el = $("#" + id), chs = el.querySelectorAll(".ch");
+    tl.set(chs, { textShadow: "-6px 0 rgba(255,50,90,0.85), 6px 0 rgba(0,200,255,0.85)" }, t);
+    tl.to(el, { keyframes: [ { x: -14, skewX: -9, duration: 0.035 }, { x: 11, skewX: 7, duration: 0.035 }, { x: -4, skewX: 0, opacity: 0.5, duration: 0.035 }, { x: 0, opacity: 0, duration: 0.05 } ], ease: "none" }, t);
+  }
+  function kickIn(id, t) { tl.fromTo("#" + id, { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, t); }
+  function kickOut(id, t) { tl.to("#" + id, { opacity: 0, duration: 0.12, ease: "none" }, t); }
+
+  /* ================= HUD: timecode, act counter, squares ================= */
+  var nF = Math.round(END * FPS);
+  var tc = $("#hud-tr");
+  function pad(v) { return (v < 10 ? "0" : "") + v; }
+  for (var f = 1; f <= nF; f++) { var sec = Math.floor(f / FPS); tl.set(tc, { textContent: "TC 00:" + pad(Math.floor(sec / 60)) + ":" + pad(sec % 60) + ":" + pad(f % FPS) }, f / FPS); }
+  var HUDN = ["TYPE-ON", "NODE TRACE", "SCRIBBLE", "GLITCH CUT", "SIGNAL LOCK", "ZOOM-THRU"];
+  var sqs = $$("#hud-br .sq");
+  $("#bl-t").textContent = HUDN[0];
+  for (var bi = 0; bi < 6; bi++) {
+    if (bi > 0) { tl.set("#bl-n", { textContent: "0" + bi + "/05" }, B[bi]); tl.set("#bl-t", { textContent: HUDN[bi] }, B[bi]); }
+    tl.set(sqs[bi], { backgroundColor: ACC }, B[bi]);
+    if (bi > 0) tl.set(sqs[bi - 1], { backgroundColor: "rgba(140,145,155,0.6)" }, B[bi]);
+  }
+
+  /* ================= grain: a new offset every frame (seeded), through the end card ================= */
+  var gr = rng(4242), grain = $("#grain");
+  for (var g = 0; g <= nF; g++) tl.set(grain, { x: Math.round((gr() - 0.5) * 220), y: Math.round((gr() - 0.5) * 220) }, g / FPS);
+
+  /* ================= a0: type-on + particle morph ================= */
+  var L1 = D.typeon[0], L2 = D.typeon[1];
+  var l1 = $("#typeon .l1"), l2 = $("#typeon .l2");
+  var pr = document.createElement("span"); pr.className = "p"; pr.textContent = "› "; l1.appendChild(pr);
+  function typeLine(host, str, t0, dt) {
+    for (var i = 0; i < str.length; i++) { var s = document.createElement("span"); s.className = "t"; s.textContent = str[i]; host.appendChild(s); tl.set(s, { opacity: 1 }, t0 + i * dt); }
+  }
+  var DT1 = Math.min(0.03, Math.max(0.008, (0.45 * B[1] - 0.16) / L1.length));
+  typeLine(l1, L1, 0.16, DT1);
+  var cur = document.createElement("span"); cur.id = "cursor"; l1.appendChild(cur);
+  var ADV = 48 * 0.602;   // Menlo advance 0.602 em at 48 px; prefix "› " is 2 glyphs
+  tl.set(cur, { x: 2 * ADV + 4 }, 0);
+  for (var ci = 1; ci <= L1.length; ci++) tl.set(cur, { x: (2 + ci) * ADV + 4 }, 0.16 + (ci - 1) * DT1);
+  var T2 = T(1.02), DT2 = Math.min(0.024, Math.max(0.006, (B[1] - 0.3 - T2) / Math.max(1, L2.length)));
+  typeLine(l2, L2, T2, DT2);
+  [0.5, 0.75, 1.0, 1.25, 1.5, 1.75].forEach(function (t, i) { tl.set(cur, { opacity: i % 2 ? 1 : 0.15 }, T(t)); });
+  kickIn("k0", 0.05);
+  tl.set("#typeon", { textShadow: "-5px 0 rgba(255,50,90,0.8), 5px 0 rgba(0,200,255,0.8)" }, B[1] - 0.08);
+  tl.to("#typeon", { keyframes: [ { x: -12, duration: 0.03 }, { x: 9, duration: 0.03 }, { x: 0, opacity: 0, duration: 0.06 } ], ease: "none" }, B[1] - 0.08);
+  kickOut("k0", B[1] - 0.08);
+
+  // node field (seeded jittered grid)
+  var R = rng(61), nodes = [], cols = 6, rows = 9, X0 = 120, X1 = 960, Y0 = 290, Y1 = 1250;
+  for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+    if (R() < 0.17) continue;
+    nodes.push({ x: X0 + (c + 0.5) * (X1 - X0) / cols + (R() - 0.5) * 95, y: Y0 + (r + 0.5) * (Y1 - Y0) / rows + (R() - 0.5) * 70 });
+  }
+  var targets = [[300, 360], [720, 470], [400, 640], [800, 790], [330, 950], [740, 1080], [520, 1210]];
+  var used = {}, route = targets.map(function (p) {
+    var best = -1, bd = 1e9; nodes.forEach(function (nd, i) { if (used[i]) return; var d = Math.hypot(nd.x - p[0], nd.y - p[1]); if (d < bd) { bd = d; best = i; } });
+    used[best] = 1; return best; });
+  var ekeys = {}, edges = [];
+  nodes.forEach(function (a, i) {
+    var ds = nodes.map(function (b, j) { return { j: j, d: Math.hypot(a.x - b.x, a.y - b.y) }; }).filter(function (o) { return o.j !== i; }).sort(function (p, q) { return p.d - q.d; });
+    ds.slice(0, 2).forEach(function (o) { var k = Math.min(i, o.j) + "-" + Math.max(i, o.j); if (!ekeys[k]) { ekeys[k] = 1; edges.push([i, o.j]); } });
+  });
+  var gE = $("#edges"), gN = $("#nodes"), gD = $("#dust");
+  edges.forEach(function (e, k) {
+    var a = nodes[e[0]], b = nodes[e[1]], len = Math.hypot(a.x - b.x, a.y - b.y);
+    var ln = mk("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: "rgba(185,192,206,0.22)", "stroke-width": 1.4, "stroke-dasharray": len, "stroke-dashoffset": len }, gE);
+    var te = 0.75 + (k % 17) * 0.045 + (k / edges.length) * 0.35;
+    tl.to(ln, { attr: { "stroke-dashoffset": 0 }, duration: TD(te, 0.5), ease: "power2.out" }, T(te));
+  });
+  nodes.forEach(function (nd, i) {
+    if (used[i]) return;
+    var tint = R(); var col = tint < 0.22 ? "rgba(77,166,255,0.75)" : "rgba(226,230,238,0.55)";
+    var gNode = mk("g", {}, gN);
+    mk("circle", { cx: nd.x, cy: nd.y, r: tint < 0.22 ? 6 : 5, fill: "#05060a", stroke: col, "stroke-width": 1.6 }, gNode);
+    var tm = R() * 0.35;
+    tl.fromTo(gNode, { x: (R() - 0.5) * 300, y: (R() - 0.5) * 300, opacity: 0.6 }, { x: 0, y: 0, opacity: 1, duration: TD(tm, 1.3), ease: "expo.inOut" }, T(tm));
+  });
+  for (var d = 0; d < 150; d++) {
+    var dx = 90 + R() * 900, dy = 250 + R() * 1060, ang = R() * 180;
+    var dl = mk("line", { x1: dx, y1: dy, x2: dx + 7, y2: dy, stroke: R() < 0.3 ? "rgba(120,190,255,0.55)" : "rgba(220,225,232,0.45)", "stroke-width": 1.6, "stroke-linecap": "round", transform: "rotate(" + ang.toFixed(1) + " " + dx.toFixed(1) + " " + dy.toFixed(1) + ")" }, gD);
+    var tdst = 0.7 + R() * 0.8;
+    tl.to(dl, { opacity: 0, duration: TD(tdst, 0.6), ease: "power1.in" }, T(tdst));
+  }
+  // route nodes + labels (labels are keywords of the narration, chosen by build.py)
+  var LBL = D.route;
+  var gR = $("#rnodes"), rpts = route.map(function (i) { return nodes[i]; });
+  var rEls = rpts.map(function (p, i) {
+    var gg = mk("g", {}, gR);
+    var halo = mk("circle", { cx: p.x, cy: p.y, r: 15, fill: "none", stroke: ACC, "stroke-width": 1.5, opacity: 0 }, gg);
+    var core = mk("circle", { cx: p.x, cy: p.y, r: 6.5, fill: "#05060a", stroke: "rgba(226,230,238,0.6)", "stroke-width": 1.8 }, gg);
+    var right = p.x < 600;
+    var tx = mk("text", { x: right ? p.x + 26 : p.x - 26, y: p.y - 18, "text-anchor": right ? "start" : "end", "class": "lab", opacity: 0 }, gg);
+    tx.textContent = LBL[i] || "";
+    return { halo: halo, core: core, tx: tx };
+  });
+  var dPath = "M " + rpts.map(function (p) { return p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" L ");
+  var routeEl = $("#route"); routeEl.setAttribute("d", dPath);
+  var cum = [0]; for (var s = 1; s < rpts.length; s++) cum.push(cum[s - 1] + Math.hypot(rpts[s].x - rpts[s - 1].x, rpts[s].y - rpts[s - 1].y));
+  var LEN = cum[cum.length - 1];
+  routeEl.setAttribute("stroke-dasharray", LEN.toFixed(1)); routeEl.setAttribute("stroke-dashoffset", LEN.toFixed(1));
+  var head = $("#head");
+  var tFirst = D.firstWordStart;   // the head ignites on the first spoken word
+  tl.set(head, { x: rpts[0].x, y: rpts[0].y }, 0);
+  tl.fromTo(head, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.45, ease: "back.out(2.2)" }, tFirst);
+  function arrive(i, t) {
+    var e = rEls[i];
+    tl.to(e.core, { attr: { fill: ACC, stroke: ACC_HI, r: 8 }, duration: 0.18, ease: "power2.out" }, t);
+    tl.fromTo(e.halo, { attr: { r: 9 }, opacity: 0.9 }, { attr: { r: 30 }, opacity: 0.35, duration: 0.5, ease: "expo.out", immediateRender: false }, t);
+    tl.fromTo(e.tx, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out", immediateRender: false }, t + 0.04);
+  }
+  arrive(0, tFirst + 0.07);
+  var SEG0 = 0.55, SEGD = 0.68;
+  for (var sI = 0; sI < rpts.length - 1; sI++) {
+    var t0 = SEG0 + sI * SEGD, n0 = T(t0), nd0 = TD(t0, SEGD);
+    tl.to(routeEl, { attr: { "stroke-dashoffset": (LEN - cum[sI + 1]).toFixed(1) }, duration: nd0, ease: "power2.inOut" }, n0);
+    tl.to(head, { x: rpts[sI + 1].x, y: rpts[sI + 1].y, duration: nd0, ease: "power2.inOut" }, n0);
+    arrive(sI + 1, n0 + nd0 - 0.02);
+  }
+  tl.fromTo("#ripple", { attr: { r: 20 }, opacity: 0.8 }, { attr: { r: 150 }, opacity: 0, duration: 0.9, ease: "expo.out", immediateRender: false }, T(2.72));
+  tl.fromTo("#stageA", { scale: 1, transformOrigin: "50% 40%" }, { scale: 1.07, duration: TD(0, 5.1), ease: "sine.inOut" }, 0);
+
+  /* ================= a1 ================= */
+  kickIn("k1", B[1] + 0.02); riseIn("h1", B[1] + 0.04);
+  glitchOut("h1", B[2] - 0.10); kickOut("k1", B[2] - 0.10);
+
+  /* ================= a2: scribbles ================= */
+  kickIn("k2", B[2] + 0.02); riseIn("h2", B[2] + 0.04);
+  var SR = rng(1999), gS = $("#scrib"), starts = nodes.map(function (n, i) { return i; }).filter(function (i) { return !used[i]; });
+  for (var q = 0; q < 12; q++) {
+    var st = nodes[starts[Math.floor(SR() * starts.length)]], x = st.x, y = st.y, a = SR() * Math.PI * 2, pts = [[x, y]];
+    for (var k = 0; k < 34; k++) {
+      a += (SR() - 0.5) * 2.9; var stp = 9 + SR() * 15;
+      var nx = x + Math.cos(a) * stp, ny = y + Math.sin(a) * stp;
+      if (nx < 120 || nx > 960) { a = Math.PI - a; nx = x + Math.cos(a) * stp; }
+      if (ny < 300 || ny > 1250) { a = -a; ny = y + Math.sin(a) * stp; }
+      x = nx; y = ny;
+      pts.push([x + (SR() - 0.5) * 9, y + (SR() - 0.5) * 9]);
+    }
+    var dd = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
+    var pth = mk("path", { d: dd, fill: "none", stroke: "rgba(214,218,226,0.7)", "stroke-width": 1.9, "stroke-linejoin": "round", "stroke-linecap": "round" }, gS);
+    var pl = pth.getTotalLength();
+    pth.setAttribute("stroke-dasharray", pl.toFixed(1)); pth.setAttribute("stroke-dashoffset", pl.toFixed(1));
+    var tq = 3.78 + q * 0.06, sdur = 0.55 + SR() * 0.25;
+    tl.to(pth, { attr: { "stroke-dashoffset": 0 }, duration: TD(tq, sdur), ease: "power1.out" }, T(tq));
+    var ex = pts[pts.length - 1][0], ey = pts[pts.length - 1][1], xg = mk("g", { opacity: 0 }, gS);
+    mk("line", { x1: ex - 9, y1: ey - 9, x2: ex + 9, y2: ey + 9, stroke: "rgba(235,236,240,0.85)", "stroke-width": 2.4, "stroke-linecap": "round" }, xg);
+    mk("line", { x1: ex - 9, y1: ey + 9, x2: ex + 9, y2: ey - 9, stroke: "rgba(235,236,240,0.85)", "stroke-width": 2.4, "stroke-linecap": "round" }, xg);
+    tl.to(xg, { opacity: 1, duration: 0.05 }, T(tq + 0.62 + SR() * 0.2));
+    tl.to(pth, { keyframes: [ { opacity: 0.25, duration: 0.04 }, { opacity: 1, duration: 0.04 } ], ease: "none" }, T(4.55 + SR() * 0.4));
+  }
+  tl.to("#edges", { opacity: 0.55, duration: 0.4 }, T(3.8));
+
+  /* ================= cut a2 -> a3: glitch ================= */
+  var gb = $("#gbars"), GB = rng(5), bars = [];
+  for (var bb = 0; bb < 9; bb++) {
+    var bar = document.createElement("div"); bar.className = "gbar";
+    var hh = 6 + Math.floor(GB() * 46); bar.style.top = Math.floor(200 + GB() * 1500) + "px"; bar.style.height = hh + "px";
+    var cc = GB(); bar.style.background = cc < 0.35 ? "rgba(77,166,255,0.55)" : cc < 0.7 ? "rgba(255,143,46,0.5)" : "rgba(235,235,240,0.35)";
+    gb.appendChild(bar); bars.push(bar);
+  }
+  [-0.10, -0.06, -0.02, 0.02].forEach(function (o, i) {
+    bars.forEach(function (bar, k) { tl.set(bar, { opacity: ((k + i) % 3 === 0) ? 1 : 0, x: Math.round((GB() - 0.5) * 120) }, B[3] + o); });
+  });
+  tl.set(bars, { opacity: 0 }, B[3] + 0.07);
+  tl.to("#stageA", { keyframes: [ { x: -18, duration: 0.03 }, { x: 14, duration: 0.03 }, { x: -6, duration: 0.03 }, { x: 0, duration: 0.03 } ], ease: "none" }, B[3] - 0.10);
+  tl.set("#stageA", { opacity: 0 }, B[3] + 0.02);
+  glitchOut("h2", B[3] - 0.10); kickOut("k2", B[3] - 0.10);
+
+  /* ================= a3: ledger ================= */
+  var b3 = B[3] + 0.02;
+  tl.set("#stageB", { opacity: 1 }, b3);
+  var LX = 200, LY0 = 360, LY1 = 1225, ROWY = [385, 550, 715, 880, 1045, 1210];
+  var STEPS = D.rows;
+  var gT = $("#ticks");
+  for (var tk = 0; tk <= 26; tk++) {
+    var yy = LY0 + tk * (LY1 - LY0) / 26, major = tk % 5 === 0;
+    var tline = mk("line", { x1: LX - 22 - (major ? 10 : 0), y1: yy, x2: LX - 14, y2: yy, stroke: "rgba(160,165,175," + (major ? 0.55 : 0.3) + ")", "stroke-width": 1.4 }, gT);
+    tl.fromTo(tline, { opacity: 0 }, { opacity: 1, duration: 0.1 }, b3 + 0.04 + tk * 0.012);
+  }
+  var led = $("#ledline"), LL = LY1 - LY0;
+  led.setAttribute("stroke-dasharray", LL); led.setAttribute("stroke-dashoffset", LL);
+  tl.to(led, { attr: { "stroke-dashoffset": 0 }, duration: 0.42, ease: "power3.out" }, b3 + 0.02);
+  tl.fromTo("#runlab", { opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: false }, b3 + 0.14);
+  var gRows = $("#rows"), rowEls = [];
+  ROWY.forEach(function (y, i) {
+    var gg = mk("g", {}, gRows);
+    var ring = mk("circle", { cx: LX, cy: y, r: 11, fill: "#05060a", stroke: "rgba(226,230,238,0.6)", "stroke-width": 2 }, gg);
+    var idx = mk("text", { x: 258, y: y - 26, "class": "row-idx" }, gg); idx.textContent = "0" + (i + 1);
+    var nm = mk("text", { x: 256, y: y + 30, "class": "row-name" }, gg); nm.textContent = STEPS[i] || "";
+    var sep = mk("line", { x1: 256, y1: y + 60, x2: 980, y2: y + 60, stroke: "rgba(160,165,175,0.14)", "stroke-width": 1 }, gg);
+    tl.fromTo([idx, nm], { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.4, ease: "expo.out", stagger: 0.03 }, b3 + 0.10 + i * 0.06);
+    tl.fromTo(sep, { opacity: 0 }, { opacity: 1, duration: 0.3 }, b3 + 0.14 + i * 0.06);
+    tl.fromTo(ring, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.3, ease: "back.out(2)" }, b3 + 0.08 + i * 0.06);
+    rowEls.push({ ring: ring, nm: nm });
+  });
+  var tP = T(5.6), dP = TD(5.6, 0.95);
+  tl.set("#pulse", { opacity: 1 }, tP);
+  tl.fromTo("#pulse", { attr: { cy: LY0 } }, { attr: { cy: ROWY[5] }, duration: dP, ease: "none", immediateRender: false }, tP);
+  ROWY.forEach(function (y, i) {
+    tl.to(rowEls[i].ring, { attr: { fill: ACC, stroke: ACC_HI }, duration: 0.12 }, tP + dP * (y - LY0) / (ROWY[5] - LY0));
+  });
+  tl.to("#pulse", { opacity: 0, duration: 0.2 }, Math.min(T(6.56), B[4] - 0.2));
+  kickIn("k3", b3 + 0.14); riseIn("h3", b3 + 0.18);
+  glitchOut("h3", B[4] - 0.12); kickOut("k3", B[4] - 0.12);
+
+  /* ================= a4: plan line locks onto the run ================= */
+  var gP = $("#pnodes");
+  ROWY.forEach(function (y) { mk("circle", { cx: 0, cy: y, r: 17, fill: "none", stroke: BLU, "stroke-width": 2.2 }, gP); });
+  tl.fromTo("#plan", { x: 92, y: 46, opacity: 0 }, { x: 92, y: 46, opacity: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, B[4] + 0.02);
+  var tM = T(7.3), dM = TD(7.3, 0.85), tLock = tM + dM;
+  tl.to("#plan", { x: LX, y: 0, duration: dM, ease: "expo.inOut" }, tM);
+  tl.to("#planlab", { opacity: 0, duration: 0.15 }, tM + dM * 0.35);  // gone before it reaches the RUN label
+  tl.set("#runlab", { textContent: "RUN = PLAN" }, tLock - 0.02);
+  tl.to("#runlab", { attr: { x: 330 }, duration: 0.01 }, tLock - 0.02);
+  tl.fromTo("#pnodes circle", { attr: { r: 17 }, stroke: BLU }, { attr: { r: 26 }, stroke: "#cfe6ff", duration: 0.12, ease: "power2.out", stagger: 0.025, immediateRender: false }, tLock);
+  tl.to("#pnodes circle", { attr: { r: 17 }, stroke: BLU, duration: 0.35, ease: "power2.out", stagger: 0.025 }, tLock + 0.14);
+  tl.fromTo("#readout", { opacity: 0 }, { opacity: 1, duration: 0.25, immediateRender: false }, B[4] + 0.18);
+  var ro = $("#ro-num");
+  for (var m = 0; m <= 6; m++) tl.set(ro, { textContent: m + "/6" }, tM + dM * m / 6);
+  tl.to(rowEls.map(function (r) { return r.nm; }), { fill: "#ffffff", duration: 0.15 }, tLock);
+  kickIn("k4", B[4] + 0.04); riseIn("h4", B[4] + 0.08);
+  glitchOut("h4", B[5] - 0.08); kickOut("k4", B[5] - 0.08);
+
+  // slow camera push across a3-a4 (dir-D only pushed stage A); keeps long acts from holding still
+  tl.fromTo("#stageB", { scale: 1, transformOrigin: "50% 42%" }, { scale: 1.06, duration: Math.max(0.3, B[5] - 0.16 - b3), ease: "sine.inOut", immediateRender: false }, b3);
+
+  /* ================= cut a4 -> a5: zoom-through into the last step ================= */
+  tl.to("#stageB", { scale: 7, transformOrigin: LX + "px " + ROWY[5] + "px", filter: "blur(14px)", duration: 0.24, ease: "power3.in" }, B[5] - 0.14);
+  tl.to("#stageB", { opacity: 0, duration: 0.08, ease: "none" }, B[5] + 0.02);
+  tl.set("#stageC", { opacity: 1 }, B[5] + 0.06);
+
+  /* ================= a5: stamp ring ================= */
+  var b5 = B[5] + 0.06;
+  var gTk = $("#rticks");
+  for (var rt = 0; rt < 72; rt++) {
+    var an = rt / 72 * Math.PI * 2, lng = rt % 6 === 0, r0 = 268, r1 = lng ? 292 : 280;
+    mk("line", { x1: 540 + Math.cos(an) * r0, y1: 640 + Math.sin(an) * r0, x2: 540 + Math.cos(an) * r1, y2: 640 + Math.sin(an) * r1,
+      stroke: lng ? "rgba(255,170,90,0.75)" : "rgba(255,170,90,0.35)", "stroke-width": lng ? 2.4 : 1.4 }, gTk);
+  }
+  tl.fromTo("#ringwrap", { scale: 0.35, opacity: 0, transformOrigin: "540px 640px", filter: "blur(14px)" },
+    { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out", immediateRender: false }, b5);
+  tl.fromTo("#rticks", { rotation: -40, svgOrigin: "540 640" }, { rotation: 8, svgOrigin: "540 640", duration: Math.max(0.6, B[6] - b5), ease: "expo.out" }, b5 - 0.04);
+  var ringEl = $("#ring"), RC = 2 * Math.PI * 250;
+  ringEl.setAttribute("stroke-dasharray", RC.toFixed(1)); ringEl.setAttribute("stroke-dashoffset", RC.toFixed(1));
+  tl.to(ringEl, { attr: { "stroke-dashoffset": 0 }, duration: 0.6, ease: "expo.out" }, b5);
+  var ck = $("#check"), CL = ck.getTotalLength();
+  ck.setAttribute("stroke-dasharray", CL.toFixed(1)); ck.setAttribute("stroke-dashoffset", CL.toFixed(1));
+  tl.to(ck, { attr: { "stroke-dashoffset": 0 }, duration: 0.32, ease: "power3.out" }, b5 + 0.24);
+  var chipHost = $("#chips"), cnt = $("#cnt"), NC = D.chips.length;
+  cnt.textContent = "0 / " + NC;
+  tl.fromTo(cnt, { opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: false }, b5 + 0.24);  // outside #ringwrap: never scaled below size
+  var cStep = Math.max(0.03, Math.min(0.12, (B[6] - 0.3 - (b5 + 0.32)) / Math.max(1, NC)));
+  D.chips.forEach(function (w, i) {
+    var cp = document.createElement("span"); cp.className = "chip"; cp.innerHTML = "<i>✓</i>"; cp.appendChild(document.createTextNode(w)); chipHost.appendChild(cp);
+    var tt = b5 + 0.32 + i * cStep;
+    tl.fromTo(cp, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25, ease: "expo.out", immediateRender: false }, tt);
+    tl.set(cnt, { textContent: (i + 1) + " / " + NC }, tt);
+  });
+  tl.fromTo("#stamp", { scale: 1, transformOrigin: "50% 33%" }, { scale: 1.06, duration: Math.max(0.3, B[6] - b5), ease: "sine.inOut", immediateRender: false }, b5);
+  kickIn("k5", B[5] + 0.02); riseIn("h5", B[5] + 0.06);
+
+  /* ================= end card (kit/endcard.js) by a hard cut ================= */
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style D: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  // slow settle after the kit's 0.4 s logo scale, so the hold keeps moving
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.fromTo("#ecfoot .rule", { scaleX: 0.3 }, { scaleX: 1.8, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  $("#ecfoot-t").textContent = D.footer;
+  tl.set("#ecfoot", { autoAlpha: 1 }, plan.start);
+  tl.set({}, {}, END);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+})();
+</script>
+</body>
+</html>

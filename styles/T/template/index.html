@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style T: dot-matrix printout, __T_TITLE__</title>
+<!--
+  Style T template (canonical look: the reference lookdev, read only). styles/T/build.py fills
+  __T_DURATION__, __T_VO_DURATION__, __T_TITLE__ and the window.__T plan below.
+  A cream continuous-feed sheet with green bars, sprocket strips and perforations rises out of a
+  beige printer; every narration line prints dot by dot (hand-coded 5x7 column bitmap on canvas,
+  seeded ink density and jitter), the head carriage tracking each line and alternating direction.
+  Title words are pre-printed as solid dot banners; the reviewer gag prints in red Comic Shanns and
+  is X-ed out and VOID-stamped when the negation line prints; the negation and final lines print
+  double height. Outro: form feed and tear-off, then the shared Keller AI end card (kit/endcard.js).
+  Fonts (D4): GagComic -> bundled Comic Shanns; the chassis labels (Helvetica Neue / Arial in the
+  canonical) -> bundled Lilita One, raised from 30/24 px to 46 px so they clear the 44 px floor.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+:root { --graphite: #202020; --cream: #FBF7F0; --red: #c8283a; --bar: rgba(104,164,116,.10); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--graphite); }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: radial-gradient(70% 45% at 50% 42%, #24426c 0%, #10243E 55%, #070d18 100%); }
+#cam { position: absolute; inset: 0; transform-origin: 540px 1700px; transform: rotate(-1.2deg); }
+#pwin { position: absolute; left: 50px; top: -200px; width: 980px; height: 1876px; overflow: hidden; transform-origin: 490px 1876px;
+  box-shadow: 0 0 70px 10px rgba(0,0,0,.7), 0 0 0 2px rgba(0,0,0,.25); }
+#paper { position: absolute; left: 0; top: 200px; width: 980px; height: 9000px; will-change: transform;
+  background:
+    linear-gradient(90deg, rgba(16,36,62,.10) 0, transparent 3%, transparent 97%, rgba(16,36,62,.12) 100%),
+    repeating-linear-gradient(180deg, var(--bar) 0 160px, transparent 160px 320px),
+    var(--cream); }
+.strip { position: absolute; top: 0; width: 60px; height: 100%; background: var(--cream);
+  background-image: radial-gradient(circle at 30px 24px, #0b1422 0 11px, rgba(16,36,62,.35) 11.5px 12.5px, transparent 13px);
+  background-size: 60px 48px; }
+.strip.l { left: 0; border-right: 3px dotted rgba(16,36,62,.30); }
+.strip.r { right: 0; border-left: 3px dotted rgba(16,36,62,.30); }
+.perf { position: absolute; left: 60px; width: 860px; height: 0; border-top: 3px dashed rgba(16,36,62,.38); }
+.item { position: absolute; left: 0; }
+.item canvas { display: block; }
+.gag { position: absolute; left: 70px; width: 840px; height: 250px; font-family: "KS Shanns", cursive; font-weight: 700; color: var(--red); white-space: nowrap; }
+.gag .g1 { position: absolute; left: 14px; top: 10px; font-size: 94px; line-height: 110px; transform: rotate(-5deg);
+  text-shadow: 5px 3px 0 rgba(200,40,58,.35), -2px 1px 2px rgba(16,36,62,.45); filter: blur(.6px); }
+.gag .g1 span { display: inline-block; }
+.gag .g2 { position: absolute; left: 330px; top: 134px; font-size: 62px; line-height: 70px; transform: rotate(4deg); color: #6b2030; opacity: .85; filter: blur(.8px); }
+.gag svg { position: absolute; left: 0; top: 0; width: 840px; height: 250px; }
+.gag canvas { position: absolute; left: 250px; top: 36px; transform: rotate(-9deg); opacity: 0; }
+#curl { position: absolute; left: 50px; top: 0; width: 980px; height: 1000px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5,10,20,.66) 0%, rgba(5,10,20,.34) 40%, rgba(5,10,20,0) 100%); }
+#under { position: absolute; left: 50px; top: 1590px; width: 980px; height: 86px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.38) 100%); }
+#stub { position: absolute; left: 50px; top: 1600px; width: 980px; height: 100px; opacity: 0; border-top: 3px dashed rgba(16,36,62,.45);
+  background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0) 30%), var(--cream); }
+#pr { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform: translateY(258px); pointer-events: none; }
+#printer { position: absolute; left: 0; top: 1440px; width: 1080px; height: 480px;
+  background: linear-gradient(180deg, #d8d2c4 0, #cfc8b8 10px, #bdb6a5 120px, #a39c8c 480px); border-top: 3px solid #eee7d8;
+  box-shadow: 0 -18px 30px rgba(0,0,0,.45); }
+#slot { position: absolute; left: 40px; top: 1432px; width: 1000px; height: 22px; background: #121212; border-radius: 6px; box-shadow: inset 0 4px 6px #000; }
+#bail { position: absolute; left: 30px; top: 1418px; width: 1020px; height: 14px; border-radius: 7px; background: linear-gradient(180deg,#9aa1a6,#5d6368); }
+.roller { position: absolute; top: 1414px; width: 34px; height: 22px; border-radius: 11px; background: #2a2a2a; }
+#head { position: absolute; left: 0; top: 1338px; width: 150px; height: 112px; }
+#head .body { position: absolute; left: 0; top: 30px; width: 150px; height: 82px; border-radius: 10px;
+  background: linear-gradient(180deg, #3a3a3a, #1c1c1c); box-shadow: 0 10px 18px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.12); }
+#head .rib { position: absolute; left: 22px; top: 0; width: 106px; height: 40px; border-radius: 6px; background: linear-gradient(180deg,#2d2d2d,#111); }
+#head .rib i { position: absolute; left: 0; right: 0; top: 18px; height: 10px; background: linear-gradient(180deg, #111 0 50%, #7a1824 50% 100%); }
+#head .nose { position: absolute; left: 68px; top: 28px; width: 14px; height: 22px; background: #8a8f93; border-radius: 3px; }
+#rail { position: absolute; left: 0; top: 1474px; width: 1080px; height: 10px; background: linear-gradient(180deg,#8d949a,#4f5459); }
+#plabel { position: absolute; left: 72px; top: 1524px; font: 400 46px/1 "KS Lilita", sans-serif; letter-spacing: 5px; color: #5f594e; white-space: nowrap; }
+#plabel2 { position: absolute; right: 120px; top: 1524px; font: 400 46px/1 "KS Lilita", sans-serif; letter-spacing: 4px; color: #6f695d; white-space: nowrap; }
+#led { position: absolute; right: 74px; top: 1538px; width: 22px; height: 22px; border-radius: 11px; background: #e9a23b; box-shadow: 0 0 14px #e9a23b; }
+#vig { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 85% at 50% 55%, rgba(0,0,0,0) 50%, rgba(0,0,0,.6) 100%); }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__T_DURATION__">
+  <div id="cam">
+    <div id="pwin"><div id="paper"><div class="strip l"></div><div class="strip r"></div></div></div>
+    <div id="curl"></div><div id="under"></div><div id="stub"></div>
+    <div id="pr">
+      <div id="slot"></div>
+      <div id="printer"></div>
+      <div id="bail"></div>
+      <div class="roller" style="left:240px"></div><div class="roller" style="left:520px"></div><div class="roller" style="left:800px"></div>
+      <div id="rail"></div>
+      <div id="head"><div class="rib"><i></i></div><div class="body"></div><div class="nose"></div></div>
+      <div id="plabel"></div>
+      <div id="plabel2"></div>
+      <div id="led"></div>
+    </div>
+  </div>
+  <div id="vig"></div>
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__T_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__T_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+window.__T = /*__T_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__T;
+  if (!D) throw new Error("style T: no plan injected (run styles/T/build.py)");
+  var FPS = 30, END = D.duration;
+  var F = {" ":[0,0,0,0,0],"!":[0,0,0x5F,0,0],"#":[0x14,0x7F,0x14,0x7F,0x14],"'":[0,8,7,3,0],"(":[0,0x1C,0x22,0x41,0],")":[0,0x41,0x22,0x1C,0],
+    "*":[0x2A,0x1C,0x7F,0x1C,0x2A],"+":[8,8,0x3E,8,8],",":[0,0x80,0x70,0x30,0],"-":[8,8,8,8,8],".":[0,0,0x60,0x60,0],"/":[0x20,0x10,8,4,2],
+    "0":[0x3E,0x51,0x49,0x45,0x3E],"1":[0,0x42,0x7F,0x40,0],"2":[0x72,0x49,0x49,0x49,0x46],"3":[0x21,0x41,0x49,0x4D,0x33],"4":[0x18,0x14,0x12,0x7F,0x10],
+    "5":[0x27,0x45,0x45,0x45,0x39],"6":[0x3C,0x4A,0x49,0x49,0x31],"7":[0x41,0x21,0x11,9,7],"8":[0x36,0x49,0x49,0x49,0x36],"9":[0x46,0x49,0x49,0x29,0x1E],
+    ":":[0,0,0x14,0,0],";":[0,0x40,0x34,0,0],"<":[0,8,0x14,0x22,0x41],"=":[0x14,0x14,0x14,0x14,0x14],">":[0,0x41,0x22,0x14,8],"?":[2,1,0x59,9,6],
+    "A":[0x7C,0x12,0x11,0x12,0x7C],"B":[0x7F,0x49,0x49,0x49,0x36],"C":[0x3E,0x41,0x41,0x41,0x22],"D":[0x7F,0x41,0x41,0x41,0x3E],"E":[0x7F,0x49,0x49,0x49,0x41],
+    "F":[0x7F,9,9,9,1],"G":[0x3E,0x41,0x41,0x51,0x73],"H":[0x7F,8,8,8,0x7F],"I":[0,0x41,0x7F,0x41,0],"J":[0x20,0x40,0x41,0x3F,1],"K":[0x7F,8,0x14,0x22,0x41],
+    "L":[0x7F,0x40,0x40,0x40,0x40],"M":[0x7F,2,0x1C,2,0x7F],"N":[0x7F,4,8,0x10,0x7F],"O":[0x3E,0x41,0x41,0x41,0x3E],"P":[0x7F,9,9,9,6],"Q":[0x3E,0x41,0x51,0x21,0x5E],
+    "R":[0x7F,9,0x19,0x29,0x46],"S":[0x26,0x49,0x49,0x49,0x32],"T":[3,1,0x7F,1,3],"U":[0x3F,0x40,0x40,0x40,0x3F],"V":[0x1F,0x20,0x40,0x20,0x1F],
+    "W":[0x3F,0x40,0x38,0x40,0x3F],"X":[0x63,0x14,8,0x14,0x63],"Y":[3,4,0x78,4,3],"Z":[0x61,0x59,0x49,0x4D,0x43],"%":[0x23,0x13,8,0x64,0x62]};
+  var seed = 49; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  var INK = "8,22,46", INK2 = "5,15,34";
+  // text: px = dot pitch, sy = vertical dots per cell (2 = double height), emph = double strike
+  function dots(ctx, s, x, y, px, sy, emph, rgb) {
+    var r = px * 0.42;
+    for (var i = 0; i < s.length; i++) {
+      var g = F[s[i]] || F[" "];
+      for (var c = 0; c < 5; c++) for (var b = 0; b < 7; b++) if (g[c] >> b & 1) {
+        var ps = emph ? [0, px * .45] : [0];
+        for (var k = 0; k < ps.length; k++) for (var v = 0; v < sy; v++) {
+          ctx.fillStyle = "rgba(" + rgb + "," + (0.86 + rnd() * 0.14).toFixed(2) + ")";
+          ctx.beginPath(); ctx.arc(x + (i * 6 + c) * px + ps[k] + (rnd() - .5) * .5, y + (b * sy + v) * px + (rnd() - .5) * .5, r, 0, 6.2832); ctx.fill();
+        }
+      }
+    }
+  }
+  // banner: every lit font cell is a solid 2x3 lattice of overlapping dots
+  function banner(ctx, s, x0, y0, cw, ch, rgb) {
+    var nx = 2, ny = 3, pxx = cw / nx, pyy = ch / ny, r = Math.min(pxx, pyy) * 0.56;
+    for (var i = 0; i < s.length; i++) {
+      var g = F[s[i]] || F[" "];
+      for (var c = 0; c < 5; c++) for (var b = 0; b < 7; b++) if (g[c] >> b & 1)
+        for (var a = 0; a < nx; a++) for (var d = 0; d < ny; d++) {
+          ctx.fillStyle = "rgba(" + rgb + "," + (0.92 + rnd() * 0.08).toFixed(2) + ")";
+          ctx.beginPath(); ctx.arc(x0 + ((i * 6 + c) * nx + a + .5) * pxx, y0 + (b * ny + d + .5) * pyy, r, 0, 6.2832); ctx.fill();
+        }
+    }
+  }
+  document.getElementById("plabel").textContent = D.printerLabel;
+  document.getElementById("plabel2").textContent = D.printerStatus;
+  var paper = document.getElementById("paper"), head = document.getElementById("head");
+  var HEADY = 1676, TX = D.tx;
+  function mk(h) { var d = document.createElement("div"); d.className = "item"; var cv = document.createElement("canvas");
+    cv.width = 980; cv.height = h; d.appendChild(cv); paper.appendChild(d); return { el: d, ctx: cv.getContext("2d"), h: h }; }
+  var y = 54, items = [];
+  function place(it, t, kind, dur) { it.el.style.top = y + "px"; it.y = y; it.t = t; it.kind = kind; it.dur = dur; y += it.h; items.push(it); return it; }
+  function line(L) {
+    var px = L.px, sy = L.sy || 1, h = Math.round(7 * sy * px + 36), it = mk(h);
+    dots(it.ctx, L.text, TX, 18, px, sy, true, INK); it.role = L.role; return place(it, L.t, "t", L.dur);
+  }
+  function bn(text, cw) { var ch = 28, it = mk(7 * ch + 30);
+    banner(it.ctx, text, 490 - (text.length * 6 - 1) * cw / 2, 12, cw, ch, INK2); return place(it, -1, "b", 0); }
+  var perf0 = document.createElement("div"); perf0.className = "perf"; perf0.style.top = "26px"; paper.appendChild(perf0);
+  // pre-printed header and title banners: already on the sheet at frame 0
+  D.header.forEach(function (s) { line({ text: s, t: -1, dur: 0, px: D.headerPx }); });
+  if (D.banners.length) { y += 10; D.banners.forEach(function (b) { bn(b.text, b.cw); }); y += 30; } else { y += 20; }
+  var first = items.length, gag = null, verdict = null;
+  D.items.forEach(function (L) {
+    if (L.kind === "gag") {
+      y += 8;
+      gag = { el: document.createElement("div"), h: 250 }; gag.el.className = "gag item";
+      gag.el.innerHTML = '<div class="g1">' + L.text.split("").map(function (ch, i) {
+        return '<span style="transform:translateY(' + Math.round(Math.sin(i * 1.7) * 9) + 'px) rotate(' + Math.round(Math.cos(i * 2.3) * 7) + 'deg)">' + (ch === " " ? "&nbsp;" : ch.replace(/[<&]/g, "")) + "</span>"; }).join("") +
+        '</div><div class="g2"></div>' +
+        '<svg viewBox="0 0 840 250"><line class="x1" x1="10" y1="20" x2="830" y2="235" stroke="#c8283a" stroke-width="16" stroke-linecap="round" stroke-dasharray="860" stroke-dashoffset="860"/>' +
+        '<line class="x2" x1="830" y1="20" x2="10" y2="235" stroke="#c8283a" stroke-width="16" stroke-linecap="round" stroke-dasharray="860" stroke-dashoffset="860"/></svg>' +
+        '<canvas width="330" height="170"></canvas>';
+      gag.el.querySelector(".g2").textContent = L.sub;
+      paper.appendChild(gag.el); place(gag, L.t, "gag", L.dur);
+      var vc = gag.el.querySelector("canvas").getContext("2d"); vc.strokeStyle = "rgb(" + INK2 + ")"; vc.lineWidth = 9; vc.strokeRect(6, 6, 318, 158);
+      dots(vc, "VOID", 36, 26, 10.4, 2, true, INK2);
+      y += 6;
+    } else {
+      if (L.role === "verdict" || L.role === "final") y += 10;
+      var it = line(L);
+      if (L.role === "verdict" && !verdict) verdict = it;
+    }
+  });
+  var lastIt = items[items.length - 1];
+  y += 420;
+  var perf1 = document.createElement("div"); perf1.className = "perf"; perf1.style.top = (y - 4) + "px"; paper.appendChild(perf1);
+  var yEnd = y + 380;
+  paper.style.height = (yEnd + 2200) + "px";
+
+  function py(it) { return HEADY - it.y - it.h; }   // paper translate that puts the item bottom on the head line
+  var tl = gsap.timeline({ paused: true });
+  tl.set(paper, { y: py(items[first]) }, 0);
+  tl.set(head, { x: 40 }, 0);
+  var dir = 1, cues = [];
+  for (var i = first; i < items.length; i++) {
+    var it = items[i], t = it.t;
+    tl.set(it.el, { clipPath: "inset(0 100% 0 0)" }, 0);
+    if (i > first) tl.to(paper, { y: py(it), duration: 0.14, ease: "steps(4)" }, t - 0.15);
+    var dur = it.dur, fromL = dir > 0 || it.kind !== "t";
+    tl.fromTo(it.el, { clipPath: fromL ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)" }, { clipPath: "inset(0 0% 0 0%)", duration: dur, ease: "steps(" + (it.kind === "gag" ? 9 : 22) + ")" }, t);
+    tl.fromTo(head, { x: fromL ? 40 : 890 }, { x: fromL ? 890 : 40, duration: dur, ease: "none" }, t);
+    if (it.kind === "gag") { tl.to(head, { y: -10, duration: 0.05, yoyo: true, repeat: 5, ease: "none" }, t); tl.set(head, { y: 0 }, t + 0.31); }
+    cues.push([t, dur, it.kind]);
+    dir = it.kind === "t" ? -dir : 1;
+  }
+  // gag voided when the verdict (negation) line prints
+  if (gag) {
+    var xs = gag.el, vt = D.voidT;
+    tl.to(xs.querySelector(".x1"), { strokeDashoffset: 0, duration: 0.12, ease: "steps(4)" }, vt);
+    tl.to(xs.querySelector(".x2"), { strokeDashoffset: 0, duration: 0.12, ease: "steps(4)" }, vt + 0.12);
+    tl.fromTo(xs.querySelector("canvas"), { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.07, ease: "power3.in" }, vt + 0.26);
+    tl.to(xs.querySelector(".g1"), { opacity: 0.5, duration: 0.2 }, vt + 0.2);
+    tl.to(xs.querySelector(".g2"), { opacity: 0.35, duration: 0.2 }, vt + 0.2);
+  }
+  // outro: eased form feed of blank paper with the head zig-zagging, then the sheet is torn off
+  tl.to(paper, { y: HEADY - yEnd, duration: D.feedDur, ease: "power2.inOut" }, D.feedT);
+  tl.fromTo(head, { x: 40 }, { x: 890, duration: D.feedDur / 4, yoyo: true, repeat: 3, ease: "none", immediateRender: false }, D.feedT);
+  tl.set("#stub", { opacity: 1 }, D.tearT);
+  tl.to("#pwin", { y: -90, rotation: -1.6, duration: D.tearDur, ease: "power2.inOut" }, D.tearT);
+  tl.to(head, { x: 890, duration: Math.min(0.3, D.tearDur), ease: "power2.inOut" }, D.tearT);
+  // camera: slow push to the end card, locked tilt (rotation set in CSS)
+  tl.fromTo("#cam", { scale: 1.0 }, { scale: 1.085, duration: D.endcard.start, ease: "none" }, 0);
+  // end card (kit/endcard.js) by a hard cut; a slow push keeps the 2 s hold from freezing
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style T: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: document.getElementById("root"), start: plan.start, brand: D.brand });
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.set({}, {}, END);
+  window.__timelines["main"] = tl;
+  window.__cues = { lines: cues, gag: gag ? gag.t : null, void: D.voidT, tear: D.tearT, endcard: plan.start };
+})();
+</script>
+</body>
+</html>

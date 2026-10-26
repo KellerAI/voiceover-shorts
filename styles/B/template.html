@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Shorts studio style B: Cinematic Depth</title>
+<!--
+  Style B template, CINEMATIC DEPTH (canonical source: the dir-B reference look).
+  Instantiated by styles/B/build.py, which replaces __END__ and __CONFIG_JSON__.
+  World: a hand-rolled perspective camera rendering into #world (2D canvas). Every frame is a pure
+  function of time t (drawFrame(t)); GSAP's paused timeline is the only clock (a proxy tween's onUpdate).
+  The world choreography is authored on a 10.16 s clock (WORLD_DUR) and time-warped so that it
+  completes exactly at the end-card cut (CFG.start); world event times are mirrored in sfx.py.
+  Depth of field: thin-lens circle of confusion per object (bokeh discs, blurred labels/rings).
+  Bloom: #world is downsampled into #bloom with a contrast+blur filter and screen-blended back.
+  DOM layers above: vignette, HUD, captions, end card (kit/endcard.js), then grain over everything.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<script>window.__B_CONFIG = __CONFIG_JSON__;</script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "Avenir Next"; font-weight: 400; font-style: normal; src: local("Avenir Next Regular"), local("AvenirNext-Regular"); }
+@font-face { font-family: "Avenir Next"; font-weight: 500; font-style: normal; src: local("Avenir Next Medium"), local("AvenirNext-Medium"); }
+@font-face { font-family: "Avenir Next"; font-weight: 600; font-style: normal; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); }
+@font-face { font-family: "Didot"; font-weight: 400; font-style: italic; src: local("Didot Italic"), local("Didot-Italic"); }
+@font-face { font-family: "Menlo"; font-weight: 400; font-style: normal; src: local("Menlo Regular"), local("Menlo-Regular"); }
+@font-face { font-family: "Menlo"; font-weight: 700; font-style: normal; src: local("Menlo Bold"), local("Menlo-Bold"); }
+:root {
+  --blue: #4da6ff; --orange: #ff7a18; --purple: #7a4dff;
+  --ink: #05070d; --fg: #e8eef8; --dim: #8b97ad;
+  --sans: "Avenir Next", Menlo, sans-serif;
+  --serif: "Didot", "Avenir Next", serif;
+  --mono: Menlo, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+body { color: var(--fg); font-family: var(--sans); }
+#root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--ink); }
+canvas.full { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; display: block; }
+#bloom { mix-blend-mode: screen; opacity: 0.75; }
+/* grain sits above the end card (z 9000) so the brand hold is never pixel-static */
+#grain { mix-blend-mode: overlay; opacity: 0.5; z-index: 9500; pointer-events: none; }
+#flash { position: absolute; inset: 0; z-index: 8000; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: radial-gradient(ellipse 80% 60% at 50% 45%, rgba(240,247,255,1) 0%, rgba(170,210,255,0.9) 55%, rgba(110,160,255,0.75) 100%); }
+#vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 75% 62% at 50% 46%, rgba(0,0,0,0) 55%, rgba(2,3,8,0.55) 82%, rgba(2,3,8,0.92) 100%); }
+
+/* HUD: every run is >= 44 px (preflight legibility floor); strings are budgeted for 44 px mono
+   (about 29 px per character) so the four corners never collide in 1080 px. */
+.hud { position: absolute; font-family: var(--mono); font-size: 44px; letter-spacing: 0.06em; color: var(--dim); text-transform: uppercase; white-space: nowrap; line-height: 1; }
+.corner { position: absolute; width: 44px; height: 44px; border-color: rgba(200,214,240,0.55); border-style: solid; border-width: 0; }
+.c-tl { left: 40px; top: 40px; border-left-width: 2px; border-top-width: 2px; }
+.c-tr { right: 40px; top: 40px; border-right-width: 2px; border-top-width: 2px; }
+.c-bl { left: 40px; bottom: 40px; border-left-width: 2px; border-bottom-width: 2px; }
+.c-br { right: 40px; bottom: 40px; border-right-width: 2px; border-bottom-width: 2px; }
+#hud-tl { left: 72px; top: 76px; display: flex; align-items: center; gap: 16px; }
+#hud-tl b { color: var(--fg); font-weight: 700; }
+#hud-tl img { width: 52px; height: 52px; border-radius: 8px; }
+#hud-tr { right: 72px; top: 80px; text-align: right; }
+#hud-bl { left: 72px; bottom: 80px; color: var(--blue); }
+#hud-br { right: 72px; bottom: 80px; display: flex; align-items: center; gap: 16px; }
+#sq { display: flex; gap: 6px; }
+#sq i { display: block; width: 12px; height: 30px; background: rgba(139,151,173,0.28); }
+#rec { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--orange); margin-right: 14px; vertical-align: 4px; }
+
+/* Captions */
+#caps { position: absolute; left: 96px; right: 96px; top: 1380px; height: 360px; }
+.cue { position: absolute; left: 0; right: 0; top: 0; }
+.eyebrow { font-family: var(--mono); font-size: 44px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--blue); display: flex; align-items: center; gap: 18px; margin-bottom: 26px; }
+.eyebrow::before { content: ""; display: block; width: 56px; height: 2px; background: currentColor; }
+.eyebrow.warn { color: var(--orange); }
+.line { font-family: var(--sans); font-weight: 500; font-size: 60px; line-height: 1.16; color: var(--fg); letter-spacing: -0.005em;
+  text-shadow: 0 0 28px rgba(77,166,255,0.22), 0 2px 18px rgba(0,0,0,0.85); }
+.w { display: inline-block; white-space: pre; }
+.em { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 76px; letter-spacing: 0; }
+.em.blue { color: #9fd0ff; text-shadow: 0 0 30px rgba(77,166,255,0.65), 0 0 2px rgba(255,255,255,0.4); }
+.em.orange { color: #ffb37a; text-shadow: 0 0 30px rgba(255,122,24,0.55); }
+.em.ghost { color: #aeb6c6; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__END__">
+  <canvas id="world" class="full" width="1080" height="1920"></canvas>
+  <canvas id="bloom" class="full" width="270" height="480"></canvas>
+  <div id="vignette"></div>
+
+  <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+  <div class="hud" id="hud-tl"><img id="hud-logo" src="__LOGO__" alt=""/><b id="hud-name"></b></div>
+  <div class="hud" id="hud-tr"><span id="rec"></span><span id="tc">00:00:00</span></div>
+  <div class="hud" id="hud-bl"><span id="hud-run"></span></div>
+  <div class="hud" id="hud-br"><span id="hud-checks">Checks 0/8</span><div id="sq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+
+  <!-- caption cues are generated from CFG.cues (words.json timing) at load -->
+  <div id="caps"></div>
+
+  <!-- exposure blowout into the end-card cut: the dark world to the navy card alone is too soft a
+       cut (about 22 mean-abs-diff on a 32x56 gray thumbnail, under the scene-detector threshold 25) -->
+  <div id="flash"></div>
+
+  <canvas id="grain" class="full" width="540" height="960"></canvas>
+
+  <!-- one pre-mixed track: voice normalised to -14 LUFS plus the sfx bus (kit/sfx_bus.py) -->
+  <audio id="mix" src="assets/mix.wav" data-start="0" data-duration="__END__" data-volume="1"></audio>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var CFG = window.__B_CONFIG;
+  // DUR is the world-choreography clock (the canonical dir-B timing). Real time t maps onto it with
+  // worldT(t) so the camera flight and the check cascade complete exactly at the end-card cut.
+  var W = 1080, H = 1920, CX = W / 2, CY = H * 0.43, F = 1350, DUR = 10.16, FPS = CFG.fps;
+  var CARD = CFG.start, END = CFG.end;
+  function worldT(t) { return Math.min(t, CARD) * DUR / CARD; }
+  var BLUE = [77, 166, 255], ORANGE = [255, 122, 24], PURPLE = [122, 77, 255], WHITE = [226, 238, 255], DUST = [170, 190, 225], EMBER = [255, 92, 40];
+  var LIT_T = [], CHECK_T = [];
+  for (var k = 0; k < 8; k++) { LIT_T.push(5.6 + k * 0.13); CHECK_T.push(9.06 + k * 0.125); }
+  var STEPS = CFG.steps;
+
+  // ---------- seeded PRNG ----------
+  function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  var rnd = mulberry32(61);
+
+  // ---------- vector helpers ----------
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function norm(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  function lerp(a, b, u) { return a + (b - a) * u; }
+  function lerp3(a, b, u) { return [lerp(a[0], b[0], u), lerp(a[1], b[1], u), lerp(a[2], b[2], u)]; }
+  function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+  function sstep(a, b, x) { var u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); }
+  function rgba(c, a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
+  function mix(c1, c2, u) { return [Math.round(lerp(c1[0], c2[0], u)), Math.round(lerp(c1[1], c2[1], u)), Math.round(lerp(c1[2], c2[2], u))]; }
+
+  // ---------- keyframe tracks (eases from GSAP) ----------
+  function track(keys) {
+    keys.forEach(function (k) { k.fn = gsap.parseEase(k.ease || "none"); });
+    return function (t) {
+      if (t <= keys[0].t) return keys[0].v;
+      for (var i = 1; i < keys.length; i++) {
+        if (t <= keys[i].t) {
+          var a = keys[i - 1], b = keys[i], u = b.fn((t - a.t) / (b.t - a.t));
+          if (Array.isArray(a.v)) return lerp3(a.v, b.v, u);
+          return lerp(a.v, b.v, u);
+        }
+      }
+      return keys[keys.length - 1].v;
+    };
+  }
+
+  // ---------- world ----------
+  var NODES = [];
+  for (var i = 0; i < 8; i++) NODES.push([200 * Math.sin(i * 0.85 + 0.3), -18 * i, i * 480]);
+  var NODE_R = 60;
+  var ROGUE = [-760, -250, 2500];          // the unplanned node (unease)
+  var TANGLE_C = [-1550, 40, 1750];         // sloppy agents
+  var LIGHT = [260, 2300, 1900];            // volumetric source
+  var FLOOR_Y = -560;
+
+  // Camera position / look-at / roll / focus point / aperture.
+  var camP = track([
+    { t: 0.0, v: [-170, 330, -820] },                         // A: low "runway" on the dormant plan
+    { t: 2.0, v: [-140, 290, -640], ease: "sine.inOut" },
+    { t: 3.3, v: [-110, 260, -560], ease: "power1.inOut" },
+    { t: 4.35, v: [-240, 60, -520], ease: "power3.inOut" },   // C: pan to the sloppy tangle
+    { t: 5.05, v: [-260, 70, -500], ease: "sine.inOut" },
+    { t: 5.62, v: [-150, 520, -900], ease: "expo.inOut" },    // D: whip to a high three-quarter
+    { t: 6.62, v: [-110, 460, -720], ease: "power2.out" },
+    { t: 8.8, v: [-400, 70, 1380], ease: "power1.inOut" },    // E: descending dolly along the run
+    { t: 10.16, v: [560, 860, 60], ease: "power3.out" }       // F: crane up and back to the wide
+  ]);
+  var camL = track([
+    { t: 0.0, v: [60, -120, 2400] },
+    { t: 2.0, v: [60, -120, 2400], ease: "sine.inOut" },
+    { t: 3.3, v: [90, -120, 2400], ease: "power1.inOut" },
+    { t: 4.35, v: [-1450, 40, 1850], ease: "power3.inOut" },
+    { t: 5.05, v: [-1500, 40, 1850], ease: "sine.inOut" },
+    { t: 5.62, v: [40, -40, 1500], ease: "expo.inOut" },
+    { t: 6.62, v: [40, -40, 1600], ease: "power2.out" },
+    { t: 8.8, v: [0, -70, 3300], ease: "power1.inOut" },
+    { t: 10.16, v: [-80, -140, 1750], ease: "power3.out" }
+  ]);
+  var camRoll = track([
+    { t: 0, v: -2.2 }, { t: 3.3, v: -0.6, ease: "sine.inOut" }, { t: 4.35, v: 3.0, ease: "power3.inOut" },
+    { t: 5.05, v: 3.4 }, { t: 5.62, v: -4, ease: "expo.inOut" }, { t: 6.62, v: -3, ease: "power2.out" }, { t: 8.8, v: 1.2, ease: "sine.inOut" }, { t: 10.16, v: -3.5, ease: "power3.out" }
+  ]);
+  var focusPt = track([
+    { t: 0.0, v: NODES[1] },
+    { t: 3.3, v: NODES[2], ease: "sine.inOut" },
+    { t: 4.3, v: TANGLE_C, ease: "power2.inOut" },
+    { t: 5.0, v: TANGLE_C },
+    { t: 5.6, v: NODES[1], ease: "expo.inOut" },
+    { t: 6.55, v: NODES[4], ease: "power2.inOut" },
+    { t: 8.8, v: NODES[5], ease: "power1.inOut" },
+    { t: 9.5, v: [0, -80, 1500], ease: "power3.out" },
+    { t: 9.75, v: [0, -80, 1500] },
+    { t: 10.9, v: ROGUE, ease: "sine.inOut" }      // rack to the unplanned node, unresolved at the cut
+  ]);
+  var aperture = track([{ t: 0, v: 30 }, { t: 3.3, v: 22, ease: "sine.inOut" }, { t: 5.6, v: 18 }, { t: 8.8, v: 20 }, { t: 10.16, v: 26 }]);
+
+  var cam = { P: [0, 0, 0], r: [1, 0, 0], u: [0, 1, 0], f: [0, 0, 1], cr: 1, sr: 0, fz: 1000, ap: 20 };
+  function setCamera(t) {
+    var P = camP(t), L = camL(t);
+    // handheld micro-drift (Lissajous, ratio ~1.3)
+    P = [P[0] + 7 * Math.sin(t * 0.83), P[1] + 5 * Math.sin(t * 1.07 + 1.1), P[2]];
+    var f = norm(sub(L, P)), r = norm(cross([0, 1, 0], f)), u = cross(f, r);
+    var roll = (camRoll(t) + 0.25 * Math.sin(t * 0.61)) * Math.PI / 180;
+    cam.P = P; cam.f = f; cam.r = r; cam.u = u; cam.cr = Math.cos(roll); cam.sr = Math.sin(roll);
+    cam.fz = Math.max(60, dot(sub(focusPt(t), P), f));
+    cam.ap = aperture(t);
+  }
+  function project(p) {
+    var d = sub(p, cam.P), zc = dot(d, cam.f);
+    if (zc < 40) return null;
+    var xc = dot(d, cam.r), yc = dot(d, cam.u);
+    var xr = xc * cam.cr - yc * cam.sr, yr = xc * cam.sr + yc * cam.cr;
+    var s = F / zc;
+    return { x: CX + xr * s, y: CY - yr * s, s: s, z: zc };
+  }
+  function coc(z) { return Math.min(150, cam.ap * Math.abs(1 - cam.fz / z)); }
+
+  // ---------- sprites ----------
+  function makeSprite(c, kind) {
+    var cv = document.createElement("canvas"); cv.width = cv.height = 128;
+    var g = cv.getContext("2d"), gr;
+    if (kind === "glow") {
+      gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(0.18, rgba(c, 0.55)); gr.addColorStop(0.45, rgba(c, 0.16)); gr.addColorStop(1, rgba(c, 0));
+    } else if (kind === "bokeh") {
+      gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gr.addColorStop(0, rgba(c, 0.42)); gr.addColorStop(0.78, rgba(c, 0.5)); gr.addColorStop(0.88, rgba(c, 0.72)); gr.addColorStop(0.95, rgba(c, 0.2)); gr.addColorStop(1, rgba(c, 0));
+    } else { // streak (anamorphic flare)
+      gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(0.3, rgba(c, 0.25)); gr.addColorStop(1, rgba(c, 0));
+    }
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    return cv;
+  }
+  var SP = {};
+  [["blue", BLUE], ["white", WHITE], ["orange", ORANGE], ["purple", PURPLE], ["dust", DUST], ["ember", EMBER]].forEach(function (e) {
+    SP[e[0]] = { glow: makeSprite(e[1], "glow"), bokeh: makeSprite(e[1], "bokeh"), streak: makeSprite(e[1], "streak") };
+  });
+
+  var cv = document.getElementById("world"), ctx = cv.getContext("2d");
+  var bcv = document.getElementById("bloom"), bctx = bcv.getContext("2d");
+  var gcv = document.getElementById("grain"), gctx = gcv.getContext("2d");
+
+  function spr(name, kind, x, y, r, a, sx) {
+    if (a <= 0.003 || r <= 0.2) return;
+    var rx = r * (sx || 1);
+    if (x + rx < -50 || x - rx > W + 50 || y + r < -50 || y - r > H + 50) return;
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.drawImage(SP[name][kind], x - rx, y - r, rx * 2, r * 2);
+    ctx.globalAlpha = 1; // never leak sprite alpha into later strokes
+  }
+  // A point light with depth of field: sharp glow in focus, a bokeh disc out of focus.
+  function pointLight(p3, R, name, I, haloMul) {
+    var s = project(p3); if (!s) return null;
+    var r0 = Math.max(0.8, R * s.s), c = coc(s.z);
+    if (c < r0 * 0.7) {
+      spr(name, "glow", s.x, s.y, r0 * 2.2, I);
+      spr(name, "glow", s.x, s.y, r0 * (haloMul || 6), I * 0.22);
+    } else {
+      var rb = Math.max(r0, c * 0.9);
+      spr(name, "bokeh", s.x, s.y, rb, I * clamp(Math.pow((r0 + 3) / (rb + 3), 0.85), 0.07, 1));
+      spr(name, "glow", s.x, s.y, rb * 2.4, I * 0.12);
+    }
+    return s;
+  }
+
+  // ---------- precomputed world data ----------
+  var DUSTS = [];
+  for (i = 0; i < 520; i++) {
+    DUSTS.push({ p: [lerp(-1900, 1900, rnd()), lerp(-650, 1300, rnd()), lerp(-1700, 5200, rnd())],
+      v: [lerp(-14, 14, rnd()), lerp(4, 22, rnd()), lerp(-10, 10, rnd())], b: 0.25 + 0.75 * Math.pow(rnd(), 2),
+      R: lerp(2.2, 5.5, rnd()), hue: rnd() < 0.18 ? "purple" : (rnd() < 0.3 ? "blue" : "dust"), ph: rnd() * 6.28 });
+  }
+  // Sloppy agents: jittery random walks around TANGLE_C, with broken gaps and failed nodes.
+  var WALKS = [];
+  for (i = 0; i < 7; i++) {
+    var pts = [], p = [TANGLE_C[0] + lerp(-500, 500, rnd()), TANGLE_C[1] + lerp(-420, 420, rnd()), TANGLE_C[2] + lerp(-500, 500, rnd())];
+    for (var j = 0; j < 26; j++) {
+      pts.push(p.slice());
+      p = [p[0] + lerp(-150, 150, rnd()), p[1] + lerp(-130, 130, rnd()), p[2] + lerp(-150, 150, rnd())];
+      p = lerp3(p, TANGLE_C, 0.08);
+    }
+    WALKS.push({ pts: pts, ph: rnd() * 6.28, gap: 5 + Math.floor(rnd() * 15), fails: [Math.floor(rnd() * 26), Math.floor(rnd() * 26)] });
+  }
+  // Filament control: smooth curve through node i -> i+1 (Catmull-Rom).
+  function crPoint(i0, u) {
+    var p0 = NODES[Math.max(0, i0 - 1)], p1 = NODES[i0], p2 = NODES[Math.min(7, i0 + 1)], p3 = NODES[Math.min(7, i0 + 2)];
+    var u2 = u * u, u3 = u2 * u;
+    return [0, 1, 2].map(function (k) {
+      return 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * u + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3);
+    });
+  }
+  var PATH = []; // [seg][24 samples]
+  for (i = 0; i < 7; i++) { var segp = []; for (j = 0; j <= 24; j++) segp.push(crPoint(i, j / 24)); PATH.push(segp); }
+
+  // Grain tiles (seeded).
+  var GRAIN = [];
+  for (i = 0; i < 6; i++) {
+    var gc = document.createElement("canvas"); gc.width = 540; gc.height = 960;
+    var gx = gc.getContext("2d"), img = gx.createImageData(540, 960), dd = img.data;
+    for (j = 0; j < dd.length; j += 4) { var v = 128 + (rnd() + rnd() + rnd() - 1.5) * 120; dd[j] = dd[j + 1] = dd[j + 2] = v; dd[j + 3] = 255; }
+    gx.putImageData(img, 0, 0); GRAIN.push(gc);
+  }
+
+  // ---------- draw passes ----------
+  function drawBackground(t) {
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+    ctx.fillStyle = "#04060c"; ctx.fillRect(0, 0, W, H);
+    var g = ctx.createRadialGradient(CX + 120 * Math.sin(t * 0.2), H * 0.30, 0, CX, H * 0.36, 1100);
+    g.addColorStop(0, "rgba(40,34,92,0.55)"); g.addColorStop(0.45, "rgba(16,22,52,0.45)"); g.addColorStop(1, "rgba(4,6,12,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // horizon haze band, warmed at the end
+    var warm = sstep(9.2, 10.16, t);
+    var hz = project([0, FLOOR_Y, 6000]);
+    var hy = hz ? clamp(hz.y, -200, H + 200) : H * 0.35;
+    var g2 = ctx.createRadialGradient(CX, hy, 0, CX, hy, 900);
+    g2.addColorStop(0, rgba(mix([60, 90, 170], [150, 70, 30], warm), 0.30)); g2.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawFloor(t) {
+    ctx.globalCompositeOperation = "lighter";
+    var warm = sstep(9.2, 10.16, t);
+    var col = mix([96, 110, 200], [255, 120, 50], warm * 0.6);
+    var step = 240, x, z, a, b;
+    ctx.lineWidth = 1.5;
+    function seg(p1, p2, alphaBase) {
+      // subdivide so near-plane clipping is graceful
+      var n = 8, prev = null;
+      for (var k = 0; k <= n; k++) {
+        var q = project(lerp3(p1, p2, k / n));
+        if (q && prev) {
+          var c = coc(q.z), fade = alphaBase * clamp(1.4 - q.z / 6000, 0, 1) / (1 + c / 30);
+          if (fade > 0.004) { ctx.strokeStyle = rgba(col, fade); ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+        }
+        prev = q;
+      }
+    }
+    for (z = -1600; z <= 6200; z += step) seg([-3000, FLOOR_Y, z], [3000, FLOOR_Y, z], 0.22);
+    for (x = -3000; x <= 3000; x += step) seg([x, FLOOR_Y, -1600], [x, FLOOR_Y, 6200], 0.17 * clamp(1.3 - Math.abs(x) / 2600, 0, 1));
+    // pipeline shadow / reflection pools on the floor
+    for (var i = 0; i < 8; i++) {
+      var lit = sstep(LIT_T[i], LIT_T[i] + 0.3, t);
+      if (lit > 0) { var s = project([NODES[i][0], FLOOR_Y, NODES[i][2]]); if (s) spr("blue", "glow", s.x, s.y, 300 * s.s, 0.22 * lit, 2.2); }
+    }
+    // unease: ember underglow seeping from below
+    var ug = sstep(9.25, 10.16, t);
+    if (ug > 0) {
+      var c0 = project([-200, FLOOR_Y, 2100]); if (c0) spr("orange", "glow", c0.x, c0.y, Math.min(1500, 1900 * c0.s), 0.26 * ug, 1.8);
+    }
+  }
+
+  function drawRays(t) {
+    ctx.globalCompositeOperation = "lighter";
+    var s = project(LIGHT), sx, sy;
+    if (s) { sx = s.x; sy = s.y; } else { sx = CX + 260; sy = -600; }
+    sy = Math.min(sy, -120);
+    var warm = sstep(9.3, 10.16, t);
+    var col = mix([150, 190, 255], [255, 170, 110], warm * 0.7);
+    var inten = (0.75 + 0.25 * Math.sin(t * 0.9)) * (1 - 0.35 * sstep(3.3, 4.3, t) + 0.35 * sstep(5.0, 5.7, t));
+    for (var k = 0; k < 7; k++) {
+      var ang = (-0.33 + k * 0.11 + 0.035 * Math.sin(t * 0.4 + k * 1.7)) + Math.PI / 2;
+      var len = 2400, wid = 0.025 + 0.02 * ((k * 37) % 5) / 5;
+      var ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len;
+      var g = ctx.createLinearGradient(sx, sy, ex, ey);
+      var a = 0.055 * inten * (0.6 + 0.4 * Math.sin(k * 2.3 + t * 0.7));
+      g.addColorStop(0, rgba(col, a * 1.6)); g.addColorStop(0.45, rgba(col, a)); g.addColorStop(1, rgba(col, 0));
+      ctx.fillStyle = g; ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + Math.cos(ang - wid) * len, sy + Math.sin(ang - wid) * len);
+      ctx.lineTo(sx + Math.cos(ang + wid) * len, sy + Math.sin(ang + wid) * len);
+      ctx.closePath(); ctx.fill();
+    }
+    spr("white", "glow", sx, Math.max(sy, -300) + 120, 900, 0.10 * inten);
+    return { x: sx, y: sy };
+  }
+
+  function drawDust(t, src) {
+    ctx.globalCompositeOperation = "lighter";
+    for (var i = 0; i < DUSTS.length; i++) {
+      var d = DUSTS[i];
+      var p = [d.p[0] + d.v[0] * t + 18 * Math.sin(t * 0.5 + d.ph), d.p[1] + d.v[1] * t, d.p[2] + d.v[2] * t];
+      var s = project(p); if (!s) continue;
+      if (s.x < -200 || s.x > W + 200 || s.y < -200 || s.y > H + 200) continue;
+      // brighter inside the light shafts (approx: distance to the shaft axis in screen space)
+      var shaft = clamp(1 - Math.abs((s.x - src.x) - (s.y - src.y) * 0.08) / 520, 0, 1);
+      var tw = 0.75 + 0.25 * Math.sin(t * 2.1 + d.ph * 3);
+      pointLight(p, d.R, d.hue, d.b * tw * (0.22 + 0.6 * shaft), 3);
+    }
+  }
+
+  function drawTangle(t) {
+    var vis = sstep(3.1, 3.9, t) * (1 - sstep(5.0, 5.55, t)) + 0.0;
+    if (vis <= 0.001) return;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (var w = 0; w < WALKS.length; w++) {
+      var W_ = WALKS[w], prev = null, cc = 0;
+      var grow = sstep(3.2 + w * 0.06, 4.2 + w * 0.06, t);
+      var nPts = Math.floor(grow * (W_.pts.length - 1)) + 1;
+      for (var j = 0; j < nPts; j++) {
+        var jit = 26 * Math.sin(t * 9 + j * 1.9 + W_.ph);
+        var p = [W_.pts[j][0] + jit, W_.pts[j][1] + 0.7 * jit * Math.cos(t * 7 + j), W_.pts[j][2]];
+        var q = project(p);
+        if (q && prev && j !== W_.gap && j !== W_.gap + 1) {
+          cc = coc(q.z);
+          var lw = Math.max(1.2, 5 * q.s);
+          var flick = 0.55 + 0.45 * Math.sin(t * 23 + j * 4.1 + w);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = rgba([255, 120, 70], 0.10 * vis * flick / (1 + cc / 12));
+          ctx.lineWidth = lw * 4 + cc * 0.8; ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          ctx.strokeStyle = rgba([255, 150, 110], 0.55 * vis * flick / (1 + cc / 6));
+          ctx.lineWidth = lw + cc * 0.3; ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
+        if (q && (j === W_.fails[0] || j === W_.fails[1])) {
+          var r = Math.max(6, 26 * q.s); cc = coc(q.z);
+          pointLight(p, 22, "ember", 0.7 * vis, 4);
+          if (cc < 8) { // a small failure X, sharp only near focus
+            ctx.strokeStyle = rgba([255, 170, 140], 0.8 * vis / (1 + cc / 3)); ctx.lineWidth = Math.max(1.5, 4 * q.s);
+            ctx.beginPath(); ctx.moveTo(q.x - r, q.y - r); ctx.lineTo(q.x + r, q.y + r); ctx.moveTo(q.x + r, q.y - r); ctx.lineTo(q.x - r, q.y + r); ctx.stroke();
+          }
+        }
+        prev = q;
+      }
+    }
+  }
+
+  function drawPlanPath(t) {
+    // the plan: a dotted path that exists before the run, which the run then traces exactly
+    ctx.globalCompositeOperation = "lighter";
+    var a = 0.28 * sstep(0.2, 1.6, t);
+    for (var i = 0; i < 7; i++) for (var j = 0; j < 24; j += 2) {
+      var q = project(PATH[i][j]); if (!q) continue;
+      var c = coc(q.z);
+      spr("dust", "glow", q.x, q.y, Math.max(2.5, 7 * q.s) + c * 0.5, a / (1 + c / 8));
+    }
+  }
+
+  function drawFilament(t) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (var i = 0; i < 7; i++) {
+      var f = clamp((t - LIT_T[i]) / 0.13, 0, 1);
+      if (f <= 0) continue;
+      var n = Math.max(1, Math.round(24 * f)), prev = null;
+      for (var j = 0; j <= n; j++) {
+        var q = project(PATH[i][j]);
+        if (q && prev) {
+          var c = coc(q.z), sc = q.s;
+          var cool = sstep(9.4, 10.16, t);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = rgba(BLUE, 0.16 / (1 + c / 10)); ctx.lineWidth = Math.max(4, 34 * sc) + c;
+          ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          ctx.strokeStyle = rgba(mix(WHITE, [255, 210, 180], cool * 0.35), 0.85 / (1 + c / 5)); ctx.lineWidth = Math.max(1.6, 7 * sc) + c * 0.25;
+          ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
+        prev = q;
+      }
+    }
+    // the execution pulse travels the whole plan during "does exactly what the plan says"
+    var pu = clamp((t - 6.64) / 2.2, 0, 1);
+    if (pu > 0 && pu < 1) {
+      var sPos = gsap.parseEase("power1.inOut")(pu) * 7, si = Math.min(6, Math.floor(sPos)), su = sPos - si;
+      for (var tr = 0; tr < 6; tr++) {
+        var uu = su - tr * 0.05, ii = si; if (uu < 0) { ii -= 1; uu += 1; } if (ii < 0) break;
+        var pp = crPoint(ii, uu);
+        pointLight(pp, 13 - tr * 1.5, "white", 0.8 * (1 - tr / 6), 4);
+      }
+    }
+  }
+
+  function drawNodes(t) {
+    var labels = [];
+    for (var i = 0; i < 8; i++) {
+      var s = project(NODES[i]); if (!s) continue;
+      var c = coc(s.z), R = NODE_R * s.s;
+      var lit = sstep(LIT_T[i], LIT_T[i] + 0.22, t), chk = clamp((t - CHECK_T[i]) / 0.2, 0, 1);
+      var flash = Math.exp(-Math.max(0, t - LIT_T[i]) / 0.18) * (t >= LIT_T[i] ? 1 : 0);
+      var cflash = t >= CHECK_T[i] ? Math.exp(-(t - CHECK_T[i]) / 0.22) : 0;
+      ctx.globalCompositeOperation = "lighter";
+      // dormant ring (always), lit core, halo
+      var blurPx = c * 0.35;
+      ctx.filter = blurPx > 0.8 ? "blur(" + blurPx.toFixed(1) + "px)" : "none";
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = rgba(mix([150, 160, 210], BLUE, lit), 0.30 + 0.6 * lit);
+      ctx.lineWidth = Math.max(1.5, 4 * s.s);
+      ctx.beginPath(); ctx.arc(s.x, s.y, R, 0, Math.PI * 2); ctx.stroke();
+      // tick marks around the ring (precision instrument)
+      ctx.lineWidth = Math.max(1, 2.2 * s.s);
+      for (var m = 0; m < 24; m++) {
+        var an = m / 24 * Math.PI * 2 + t * 0.15 * (i % 2 ? 1 : -1), r1 = R * 1.22, r2 = R * (m % 6 === 0 ? 1.42 : 1.3);
+        ctx.strokeStyle = rgba(mix([120, 130, 180], BLUE, lit), (0.12 + 0.35 * lit));
+        ctx.beginPath(); ctx.moveTo(s.x + Math.cos(an) * r1, s.y + Math.sin(an) * r1); ctx.lineTo(s.x + Math.cos(an) * r2, s.y + Math.sin(an) * r2); ctx.stroke();
+      }
+      // check glyph
+      if (chk > 0) {
+        ctx.strokeStyle = rgba(WHITE, 0.95); ctx.lineWidth = Math.max(2.5, 9 * s.s); ctx.lineCap = "round"; ctx.lineJoin = "round";
+        var a0 = [s.x - R * 0.42, s.y + R * 0.02], a1 = [s.x - R * 0.12, s.y + R * 0.32], a2 = [s.x + R * 0.46, s.y - R * 0.34];
+        var l1 = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]), l2 = Math.hypot(a2[0] - a1[0], a2[1] - a1[1]), dl = chk * (l1 + l2);
+        ctx.beginPath(); ctx.moveTo(a0[0], a0[1]);
+        if (dl <= l1) ctx.lineTo(lerp(a0[0], a1[0], dl / l1), lerp(a0[1], a1[1], dl / l1));
+        else { ctx.lineTo(a1[0], a1[1]); var u2 = (dl - l1) / l2; ctx.lineTo(lerp(a1[0], a2[0], u2), lerp(a1[1], a2[1], u2)); }
+        ctx.stroke();
+        // shockwave ring
+        var sw = clamp((t - CHECK_T[i]) / 0.6, 0, 1);
+        if (sw < 1) { ctx.strokeStyle = rgba(BLUE, 0.7 * (1 - sw)); ctx.lineWidth = Math.max(1.5, 5 * s.s * (1 - sw)); ctx.beginPath(); ctx.arc(s.x, s.y, R * (1 + 2.2 * gsap.parseEase("expo.out")(sw)), 0, Math.PI * 2); ctx.stroke(); }
+      }
+      ctx.filter = "none";
+      // light
+      if (lit > 0) {
+        pointLight(NODES[i], 18 * (1 + 0.4 * flash + 0.5 * cflash), chk > 0 ? "white" : "blue", 0.55 * lit + 0.4 * flash, 9);
+        spr("blue", "glow", s.x, s.y, Math.min(R * 4.5, 420), (0.16 + 0.25 * cflash) * lit / (1 + c / 30));
+      } else {
+        pointLight(NODES[i], 7, "purple", 0.35, 4);
+      }
+      if (cflash > 0.01) spr("white", "streak", s.x, s.y, R * 0.5 + 6, 0.8 * cflash, 14);   // anamorphic streak
+      labels.push({ i: i, s: s, c: c, lit: lit, chk: chk });
+    }
+    // labels (billboards), blurred by their own circle of confusion
+    ctx.globalCompositeOperation = "source-over";
+    labels.forEach(function (L) {
+      var a = 0.35 + 0.65 * L.lit; if (L.s.s < 0.18) a *= sstep(0.1, 0.18, L.s.s);
+      var sz = clamp(30 * L.s.s, 13, 40), y = L.s.y;
+      var flip = L.s.x > W * 0.6, x = L.s.x + (flip ? -1 : 1) * NODE_R * L.s.s * 1.75;
+      ctx.textAlign = flip ? "right" : "left";
+      ctx.filter = L.c > 1.2 ? "blur(" + (L.c * 0.3).toFixed(1) + "px)" : "none";
+      ctx.globalAlpha = a / (1 + L.c / 25);
+      ctx.font = "700 " + Math.round(sz * 0.8) + "px Menlo";
+      ctx.fillStyle = L.chk > 0 ? "#9fd0ff" : "rgba(160,172,200,1)";
+      ctx.fillText("0" + (L.i + 1) + (L.chk >= 1 ? "  PASS" : ""), x, y - sz * 0.45);
+      ctx.font = "400 " + Math.round(sz) + "px Menlo";
+      ctx.fillStyle = "#e3eaf6";
+      ctx.fillText(STEPS[L.i], x, y + sz * 0.75);
+      ctx.filter = "none";
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRogue(t) {
+    // the unplanned node: off the path, never lit, never checked; an ember rim that wakes up at the end
+    var s = project(ROGUE); if (!s) return;
+    var c = coc(s.z), R = NODE_R * s.s;
+    var here = sstep(8.2, 9.2, t);
+    if (here <= 0) return;
+    var wake = sstep(8.8, 10.0, t), pulse = 0.6 + 0.4 * Math.sin((t - 8.6) * 7.5);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.filter = c > 0.8 ? "blur(" + (c * 0.35).toFixed(1) + "px)" : "none";
+    ctx.globalAlpha = 0.9 * here; ctx.fillStyle = "#020306"; ctx.beginPath(); ctx.arc(s.x, s.y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = rgba(ORANGE, (0.25 + 0.75 * wake * pulse)); ctx.lineWidth = Math.max(2.5, 6 * s.s);
+    ctx.beginPath(); ctx.arc(s.x, s.y, R, Math.PI * 0.15, Math.PI * 1.15); ctx.stroke();
+    ctx.filter = "none";
+    spr("orange", "glow", s.x, s.y, R * 5, 0.32 * wake * pulse / (1 + c / 30));
+  }
+
+  function drawFrame(rt) {
+    var t = worldT(rt);
+    setCamera(t);
+    ctx.save(); ctx.filter = "none";
+    drawBackground(t);
+    var src = drawRays(t);
+    drawFloor(t);
+    drawTangle(t);
+    drawPlanPath(t);
+    drawRogue(t);
+    drawFilament(t);
+    drawNodes(t);
+    drawDust(t, src);
+    ctx.restore();
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; ctx.filter = "none";
+    // bloom pass: downsample, crush darks, blur
+    bctx.globalCompositeOperation = "source-over"; bctx.filter = "none"; bctx.globalAlpha = 1;
+    bctx.clearRect(0, 0, 270, 480);
+    bctx.filter = "brightness(0.85) contrast(2.2) blur(6px)";
+    bctx.drawImage(cv, 0, 0, 270, 480);
+    bctx.filter = "none";
+    // grain (real time: it keeps cycling over the end card)
+    var fi = Math.floor(rt * FPS + 1e-6);
+    gctx.globalAlpha = 1;
+    gctx.drawImage(GRAIN[fi % GRAIN.length], -((fi * 37) % 40), -((fi * 53) % 40), 580, 1000);
+    updateHud(rt, t, fi);
+  }
+
+  // ---------- HUD (stateless from t) ----------
+  var tcEl = document.getElementById("tc"), chkEl = document.getElementById("hud-checks"), sqEls = document.querySelectorAll("#sq i"), recEl = document.getElementById("rec");
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function updateHud(rt, t, fi) {
+    var ss = Math.floor(rt), ff = fi % FPS;
+    tcEl.textContent = pad(Math.floor(ss / 60)) + ":" + pad(ss % 60) + ":" + pad(ff);
+    var n = 0; for (var i = 0; i < 8; i++) if (t >= CHECK_T[i] + 0.08) n++;
+    chkEl.textContent = "Checks " + n + "/8";
+    chkEl.style.color = n === 8 ? "#9fd0ff" : "";
+    for (i = 0; i < 8; i++) {
+      var on = t >= CHECK_T[i] + 0.08, litN = t >= LIT_T[i];
+      sqEls[i].style.background = on ? "#4da6ff" : (litN ? "rgba(77,166,255,0.35)" : "rgba(139,151,173,0.28)");
+      sqEls[i].style.boxShadow = on ? "0 0 12px rgba(77,166,255,0.9)" : "none";
+    }
+    recEl.style.opacity = (Math.floor(rt * 2) % 2 === 0) ? "1" : "0.25";
+  }
+
+  // ---------- captions + HUD strings from the config ----------
+  document.getElementById("hud-name").textContent = CFG.hud.name;
+  document.getElementById("hud-run").textContent = CFG.hud.run;
+  var capsEl = document.getElementById("caps");
+  CFG.cues.forEach(function (cu, ci) {
+    var el = document.createElement("div");
+    el.className = "cue"; el.id = "cue" + (ci + 1);
+    if (cu.eyebrow) {
+      var eb = document.createElement("div");
+      eb.className = "eyebrow" + (cu.eyebrowWarn ? " warn" : "");
+      eb.textContent = cu.eyebrow;
+      el.appendChild(eb);
+    }
+    var line = document.createElement("div");
+    line.className = "line";
+    cu.words.forEach(function (w, wi) {
+      var sp = document.createElement("span");
+      sp.className = "w" + (w.em ? " em " + w.em : "");
+      sp.setAttribute("data-t", String(w.t));
+      sp.textContent = w.text + (wi < cu.words.length - 1 ? " " : "");
+      line.appendChild(sp);
+    });
+    el.appendChild(line);
+    capsEl.appendChild(el);
+  });
+
+  // ---------- timeline ----------
+  function build() {
+    var tl = gsap.timeline({ paused: true });
+    var clock = { t: 0 };
+    tl.to(clock, { t: END, duration: END, ease: "none", onUpdate: function () { drawFrame(clock.t); } }, 0);
+
+    // HUD intro (the very first frame is already composed; HUD settles in over 0.9 s)
+    tl.fromTo(".hud, .corner", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out", stagger: 0.04 }, 0.05);
+
+    // captions: word-by-word focus pull (blur -> sharp), cue exits blur away
+    var cueEls = capsEl.querySelectorAll(".cue");
+    CFG.cues.forEach(function (cu, ci) {
+      var el = cueEls[ci];
+      gsap.set(el, { opacity: ci === 0 ? 1 : 0 });
+      if (ci > 0) tl.set(el, { opacity: 1 }, cu.t0);
+      el.querySelectorAll(".w").forEach(function (w) {
+        var ts = parseFloat(w.getAttribute("data-t"));
+        tl.fromTo(w, { opacity: 0, y: 22, filter: "blur(12px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.42, ease: "power3.out" }, Math.max(0, ts - 0.06));
+      });
+      var eb = el.querySelector(".eyebrow");
+      if (eb) tl.fromTo(eb, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "expo.out" }, cu.t0 + 0.02);
+      if (cu.t1 < CARD) tl.to(el, { opacity: 0, y: -14, filter: "blur(10px)", duration: 0.26, ease: "power2.in" }, cu.t1 - 0.24);
+    });
+    // the closing cue breathes up as the cascade completes
+    var lastLine = cueEls[cueEls.length - 1].querySelector(".line");
+    var lastT0 = CFG.cues[CFG.cues.length - 1].t0;
+    tl.fromTo(lastLine, { scale: 1 }, { scale: 1.04, duration: Math.max(0.6, CARD - lastT0), ease: "sine.out", transformOrigin: "0% 50%" }, lastT0 + 0.1);
+
+    // light blows out over the last 0.3 s of the run, then the hard cut to the card
+    tl.fromTo("#flash", { opacity: 0 }, { opacity: 0.6, duration: 0.3, ease: "power2.in", immediateRender: false }, Math.max(0, CARD - 0.3));
+    tl.set("#flash", { opacity: 0 }, CARD);
+
+    // shared brand end card: hard cut at CFG.start, held to CFG.end (kit/endcard.js)
+    KAEndCard.mount({ tl: tl, root: document.getElementById("root"), start: CARD, brand: CFG.brand });
+    // the card covers the HUD and captions; hide them too so DOM-based checks see what the viewer sees
+    tl.set("#caps, .hud, .corner", { autoAlpha: 0 }, CARD);
+    tl.set({}, {}, END);
+
+    drawFrame(0);
+    window.__timelines = window.__timelines || {};
+    window.__timelines["main"] = tl;
+  }
+  var fontsReady = Promise.all([
+    document.fonts.load('400 30px Menlo'), document.fonts.load('700 30px Menlo'),
+    document.fonts.load('500 60px "Avenir Next"'), document.fonts.load('italic 400 76px Didot'),
+    document.fonts.load('400 150px "KS Lilita"')
+  ]).catch(function () {});
+  fontsReady.then(function () { return document.fonts.ready; }).then(build);
+})();
+</script>
+</body>
+</html>

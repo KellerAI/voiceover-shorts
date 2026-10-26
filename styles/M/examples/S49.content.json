@@ -1,0 +1,17 @@
+{
+  "a": "MODEL A",
+  "a_sub": "GENERATOR",
+  "b": "MODEL B",
+  "b_sub": "CHECKER",
+  "dim": "AI SYSTEM",
+  "checks": "CHECKS",
+  "ok": "“LGTM”",
+  "bar": "SHARED WEIGHTS · SHARED BLIND SPOTS",
+  "callout": "INDEPENDENCE",
+  "callout_value": "≈ 0",
+  "payoff": ["INDEPENDENT", "REVIEW"],
+  "payoff_sub": "BORROWED FROM BANKING",
+  "sticky": ["trust me,", "it scales!!"],
+  "sign": "~ model A :)",
+  "icon": "bank"
+}

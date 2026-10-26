@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style L: thermal receipt, __L_TITLE__</title>
+<!--
+  Style L template, from the canonical look (read only). Instantiate with styles/L/build.py, which
+  writes the receipt plan into window.__L and the composition length into every data-duration. Do not
+  edit an instantiated copy by hand.
+
+  The look is unchanged in kind: a cream receipt fed from a graphite printer's slot, a pre-fed
+  header (K tile, wordmark, title, gold rule), stepped feed (steps(6)) and print-head wipe
+  (steps(13)) per row with two 1-frame jitter offsets, double-height title rows, a crooked red
+  claim gag that is struck, dimmed and VOID-stamped, a TEAR HERE rule, an inverse TOTAL bar in gold
+  on navy, a footer, and the tear-off (tug, lift, tilt, zigzag edge, stub left in the slot) under a
+  camera that pulls back from the slot and then dollies in slowly.
+
+  Script-agnostic: every row, its time and its copy come from build.py's plan (phrases of the words
+  file); the end card is the shared kit/endcard.js, cut in 0.1 s after the last word, held 2 s.
+
+  Preflight fixes vs the canonical look: every text run renders >= 44 px at 1080 wide (printer
+  label 26 -> 46 px, footer 34 -> 48 px, dim rows 46 -> 50 px, and the end-of-receipt pull-back
+  that shrank body text to ~41 px is replaced by a scale >= 1.0 reframe), the opening camera keeps
+  the slot in the lower band so printed paper fills the lower third from frame one, the receipt
+  never fades to black (the kit end card cuts in, hold >= 1.5 s after the last word, and keeps a
+  slow push so it never freezes), and the audio is one bus from kit/sfx_bus.py. Fonts (D4): the
+  canonical's macOS system faces are swapped for bundled OFL fonts: Andale Mono -> Comic Shanns
+  (monospace, so the leader columns still align), Avenir Next -> Lilita One, and the gag moves
+  from Comic Shanns to Virgil so it still reads as the "wrong font".
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KS Shanns"; font-weight: 300 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KS Virgil"; font-weight: 300 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+:root { --graphite: #202020; --cream: #FBF7F0; --ink: #10243E; --red: #d42a3c; --grey: #8B9090; --gold: #E9B44C; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--graphite); }
+#root { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: radial-gradient(70% 45% at 50% 40%, #34383d 0%, #232526 55%, #141414 100%); }
+#dots { position: absolute; inset: 0; opacity: .5;
+  background-image: radial-gradient(rgba(255,255,255,.07) 2px, transparent 2.5px); background-size: 54px 54px; }
+#cam { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; perspective: 2200px; perspective-origin: 540px 1700px; }
+#tilt { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 540px 1700px;
+  filter: drop-shadow(0 26px 34px rgba(0,0,0,.55)); }
+#paper { position: absolute; left: 90px; top: 0; width: 900px;
+  background: linear-gradient(90deg, rgba(16,36,62,.07) 0, rgba(16,36,62,0) 7%, rgba(16,36,62,0) 93%, rgba(16,36,62,.08) 100%), var(--cream);
+  font-family: "KS Shanns", monospace; color: var(--ink); will-change: transform; }
+.ln { position: absolute; left: 47px; width: 806px; white-space: pre; font-size: 56px; line-height: 80px; height: 80px; }
+.ln.c { text-align: center; }
+.ln.dim { color: #5c6878; font-size: 50px; line-height: 70px; height: 70px; text-align: center; }
+.ln.dbl { line-height: 65px; height: 130px; }
+.ln.dbl span { display: inline-block; transform: scaleY(2); transform-origin: 0 0; font-weight: 700; -webkit-text-stroke: 1.4px var(--ink); }
+.tot { position: absolute; left: 47px; width: 806px; height: 200px; background: var(--ink); color: #dfe6ef; text-align: center;
+  border-bottom: 8px solid var(--gold); white-space: pre; }
+.tot .a { display: block; font-size: 48px; line-height: 70px; padding-top: 10px; }
+.tot .b { display: block; font-size: 80px; line-height: 108px; color: var(--gold); font-weight: 700; -webkit-text-stroke: 1px var(--gold); }
+.hdr { position: absolute; left: 0; width: 900px; text-align: center; }
+.hdr img { width: 280px; height: 280px; display: block; margin: 0 auto; }
+.hdr .wm { font-family: "KS Lilita", sans-serif; font-weight: 400; font-size: 88px; line-height: 108px; margin-top: 18px; color: var(--ink); }
+.hdr .ti { font-size: 56px; line-height: 72px; white-space: pre; }
+.hdr .gr { width: 806px; height: 8px; background: var(--gold); margin: 22px auto 0; }
+.gag { position: absolute; left: 20px; width: 860px; height: 250px; font-family: "KS Virgil", cursive; font-size: 100px; line-height: 104px;
+  color: var(--red); text-align: center; white-space: nowrap; }
+.gag i { font-style: normal; display: inline-block; transform: rotate(-7deg) skewX(-6deg); letter-spacing: -2px; }
+.gag b { display: block; font-weight: 400; font-size: 64px; line-height: 74px; transform: rotate(5deg) translateX(150px); }
+.strike { position: absolute; left: 90px; width: 720px; height: 10px; background: var(--ink); transform-origin: 0 50%; transform: rotate(-6deg) scaleX(0); }
+.stamp { position: absolute; left: 190px; width: 520px; text-align: center; font-weight: 700; font-size: 140px; line-height: 150px; letter-spacing: 14px;
+  color: var(--ink); border: 12px solid var(--ink); border-radius: 10px; transform: rotate(-11deg); opacity: 0; }
+.ftr { position: absolute; left: 47px; width: 806px; height: 110px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--ink); white-space: pre; }
+#stub { position: absolute; left: 90px; top: 1660px; width: 900px; height: 60px; background: var(--cream); opacity: 0; }
+#contact { position: absolute; left: 90px; top: 1590px; width: 900px; height: 110px; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.5)); }
+#mouth { position: absolute; left: 66px; top: 1688px; width: 948px; height: 34px; border-radius: 10px; background: #0b0b0b;
+  box-shadow: inset 0 4px 6px rgba(0,0,0,.9), 0 2px 0 rgba(255,255,255,.07); }
+#printer { position: absolute; left: 0; top: 1700px; width: 1080px; height: 3400px;
+  background: linear-gradient(180deg, #3c3c3c 0px, #2b2b2b 16px, #232323 260px, #232323 100%); border-top: 2px solid #4a4a4a; }
+#plabel { position: absolute; left: 90px; top: 60px; font-family: "KS Shanns", monospace; font-size: 46px; letter-spacing: 3px; color: #8d9292; white-space: pre; }
+#led { position: absolute; right: 90px; top: 76px; width: 16px; height: 16px; border-radius: 8px; background: #46d39a; box-shadow: 0 0 12px #46d39a; }
+#vig { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 50%, rgba(0,0,0,0) 52%, rgba(0,0,0,.62) 100%), linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 18%); }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__L_DURATION__">
+  <div id="dots"></div>
+  <div id="cam">
+    <div id="tilt"><div id="paper"></div></div>
+    <div id="stub"></div>
+    <div id="contact"></div>
+    <div id="mouth"></div>
+    <div id="printer"><div id="plabel"></div><div id="led"></div></div>
+  </div>
+  <div id="vig"></div>
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__L_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__L_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+window.__L = /*__L_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__L, FPS = 30;
+  var root = document.getElementById("root");
+  var END = parseFloat(root.getAttribute("data-duration"));
+  var paper = document.getElementById("paper"), cam = document.getElementById("cam"), tilt = document.getElementById("tilt");
+  var SLOT = 1700, GAP = 26, W = 900;
+  function hash(n) { n = Math.sin(n * 127.1 + 311.7) * 43758.5453; return n - Math.floor(n); }
+  function zig(w, h, tooth, depth) {
+    var p = [], n = Math.round(w / tooth), i;
+    for (i = 0; i <= n; i++) p.push((i * w / n).toFixed(1) + "px " + (i % 2 ? 0 : depth) + "px");
+    for (i = n; i >= 0; i--) p.push((i * w / n).toFixed(1) + "px " + (h - (i % 2 ? depth : 0)) + "px");
+    return "polygon(" + p.join(",") + ")";
+  }
+  // shrink a single-line element's font until it fits `maxW`, never below `floor` px
+  function fitFont(el, px, maxW, floor) {
+    el.style.fontSize = px + "px";
+    while (el.scrollWidth > maxW && px > floor) { px -= 2; el.style.fontSize = px + "px"; }
+    return px;
+  }
+  var H = { ln: 80, dim: 70, dbl: 130, gag: 300, total: 200, ftr: 110 };
+
+  function build() {
+    var tl = gsap.timeline({ paused: true });
+    document.getElementById("plabel").textContent = D.header.label;
+    // pre-fed header (static, readable from frame 0)
+    var hdr = document.createElement("div"); hdr.className = "hdr"; hdr.style.top = "60px";
+    var img = document.createElement("img"); img.src = "assets/brand/keller-ai-logo.svg"; img.alt = "";
+    var wm = document.createElement("div"); wm.className = "wm"; wm.textContent = D.header.name;
+    var ti = document.createElement("div"); ti.className = "ti"; ti.textContent = D.header.title;
+    var gr = document.createElement("div"); gr.className = "gr";
+    hdr.appendChild(img); hdr.appendChild(wm); hdr.appendChild(ti); hdr.appendChild(gr);
+    paper.appendChild(hdr);
+    var y = 60 + 280 + 18 + 108 + 72 + 22 + 8 + 36;   // header block height
+    gsap.set(paper, { y: SLOT - GAP - y });
+    var gagEl = null, gagTop = 0, totalT = null, els = [], fits = [];
+    D.items.forEach(function (it, i) {
+      var t = it.t, kind = it.kind, el = document.createElement("div"), h = H[kind];
+      if (kind === "gag") {
+        el.className = "gag";
+        var big = document.createElement("i"); big.appendChild(document.createTextNode(it.big[0]));
+        big.appendChild(document.createElement("br")); big.appendChild(document.createTextNode(it.big[1]));
+        var small = document.createElement("b"); small.textContent = it.small;
+        el.appendChild(big); el.appendChild(small);
+        gagEl = el; gagTop = y;
+      } else if (kind === "ftr") { el.className = "ftr"; el.textContent = it.text; }
+      else if (kind === "total") {
+        el.className = "tot";
+        var a = document.createElement("span"); a.className = "a"; a.textContent = it.label;
+        var b = document.createElement("span"); b.className = "b"; b.textContent = it.big;
+        el.appendChild(a); el.appendChild(b); totalT = t;
+      } else if (kind === "dbl") {
+        el.className = "ln dbl c"; var s = document.createElement("span"); s.textContent = it.text; el.appendChild(s);
+      } else { el.className = "ln " + (kind === "dim" ? "dim" : ""); el.textContent = it.text; }
+      el.style.top = y + "px"; paper.appendChild(el); els.push(el);
+      if (kind === "gag") fits.push([el, 100, 840, 72]);
+      if (kind === "total") fits.push([el.querySelector(".b"), 80, 780, 56]);
+      y += h;
+      var target = SLOT - GAP - y;
+      tl.to(paper, { y: target, duration: 0.24, ease: "steps(6)" }, t);
+      gsap.set(el, { clipPath: kind === "gag" ? "inset(-30% 110% -30% -10%)" : "inset(0% 100% 0% 0%)" });
+      var dur = kind === "gag" ? 0.22 : 0.36;
+      tl.to(el, { clipPath: kind === "gag" ? "inset(-30% -10% -30% -10%)" : "inset(0% 0% 0% 0%)", duration: dur, ease: kind === "gag" ? "none" : "steps(13)" }, t + 0.2);
+      if (kind !== "gag") {
+        tl.to(el, { x: (hash(i) - .5) * 4, duration: 0.06, ease: "steps(1)" }, t + 0.2)
+          .to(el, { x: (hash(i + 9) - .5) * 4, duration: 0.06, ease: "steps(1)" }, t + 0.32)
+          .to(el, { x: 0, duration: 0.06, ease: "steps(1)" }, t + 0.2 + dur);
+      }
+      if (kind === "gag") {
+        gsap.set(el, { rotation: 0, transformOrigin: "50% 50%" });
+        tl.fromTo(el, { scale: 1.25, rotation: -4 }, { scale: 1, rotation: 2.5, duration: 0.5, ease: "back.out(3)" }, t + 0.2);
+        tl.to(el, { rotation: -1.5, duration: 0.6, ease: "sine.inOut", repeat: 1, yoyo: true }, t + 0.7);
+      }
+      if (kind === "total") {
+        tl.fromTo(el, { scale: 1.0 }, { scale: 1.035, duration: 0.14, ease: "power2.out", yoyo: true, repeat: 1, immediateRender: false, transformOrigin: "50% 50%" }, t + 0.5);
+        tl.to("#led", { backgroundColor: "#E9B44C", boxShadow: "0 0 18px #E9B44C", duration: 0.05 }, t + 0.2);
+      }
+    });
+    var yEnd = y, PH = yEnd + 40;
+    paper.style.height = PH + "px";
+    paper.style.clipPath = zig(W, PH, 24, 14);
+    // stamp beat: strike + dim the gag, stamp it, so the TOTAL bar becomes the hero
+    if (gagEl && D.stamp) {
+      var strike = document.createElement("div"); strike.className = "strike"; strike.style.top = (gagTop + 120) + "px"; paper.appendChild(strike);
+      var stamp = document.createElement("div"); stamp.className = "stamp"; stamp.textContent = D.stamp.text; stamp.style.top = (gagTop + 50) + "px"; paper.appendChild(stamp);
+      var VT = D.stamp.t;
+      tl.to(gagEl, { opacity: 0.28, duration: 0.2 }, VT - 0.05);
+      tl.to(strike, { scaleX: 1, duration: 0.18, ease: "power2.out" }, VT - 0.05);
+      tl.fromTo(stamp, { scale: 2.6, opacity: 0 }, { scale: 1, opacity: 0.92, duration: 0.14, ease: "power4.in" }, VT);
+      tl.to(stamp, { x: 3, y: -2, duration: 0.05, yoyo: true, repeat: 3, ease: "steps(1)" }, VT + 0.14);
+    }
+
+    // camera: tight on the slot (slot kept in the lower band), pull back, then a slow linear push-in
+    var TEAR = D.tear, PULL = Math.min(5.6, TEAR * 0.37);
+    gsap.set(cam, { transformOrigin: "540px 1700px" });
+    tl.fromTo(cam, { scale: 1.2, y: -150 }, { scale: 1.0, y: 0, duration: PULL, ease: "power1.inOut" }, 0);
+    tl.fromTo(cam, { scale: 1.0, y: 0 }, { scale: 1.08, y: -30, duration: Math.max(0.5, TEAR - PULL), ease: "none", immediateRender: false }, PULL);
+    tl.fromTo(tilt, { rotateX: 8, rotateY: -2 }, { rotateX: 4, rotateY: 2, duration: Math.max(0.5, TEAR - 0.1), ease: "sine.inOut" }, 0);
+    // tear-off: tug, rip, receipt lifts clear with the zigzag edge showing; the camera reframes at scale >= 1
+    var LIFT = 300, fy = SLOT - GAP - yEnd;
+    tl.fromTo(paper, { y: fy }, { y: fy - 16, duration: 0.18, ease: "steps(3)", immediateRender: false }, TEAR - 0.28);
+    tl.set("#stub", { opacity: 1 }, TEAR);
+    tl.fromTo(paper, { y: fy - 16, rotation: 0 }, { y: fy - LIFT, rotation: -2.5, transformOrigin: "50% 100%", duration: 0.4, ease: "power3.out", immediateRender: false }, TEAR);
+    tl.to("#contact", { opacity: 0, duration: 0.15 }, TEAR);
+    tl.fromTo(tilt, { rotateX: 4, rotateY: 2 }, { rotateX: 1.5, rotateY: 0, duration: 0.7, ease: "power2.out", immediateRender: false }, TEAR);
+    tl.fromTo(cam, { scale: 1.08, y: -30 }, { scale: 1.0, y: 160, duration: 0.74, ease: "power2.inOut", immediateRender: false }, TEAR);
+    var stub = document.getElementById("stub"); stub.style.clipPath = zig(W, 60, 24, 14);
+
+    // end card (kit/endcard.js) by a hard cut, then a slow push so the hold never freezes
+    var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+    if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style L: data-duration " + END + " != end-card plan end " + plan.end);
+    var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+    var logo = card.querySelector(".ka-endcard-logo");
+    tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+    var cname = card.querySelector(".ka-endcard-name");
+    if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+    tl.set({}, {}, END);
+    window.__timelines["main"] = tl;
+    // Font-size fitting needs the webfonts' metrics; it changes no tween, so it runs once they load.
+    // The timeline itself is registered synchronously: the HyperFrames runtime (and the legibility
+    // preflight's seek) bind to window.__timelines at load and miss a timeline added later.
+    var faces = ["400 56px \"KS Shanns\"", "700 56px \"KS Shanns\"", "400 88px \"KS Lilita\"", "400 100px \"KS Virgil\""];
+    var doFit = function () { fits.forEach(function (f) { fitFont(f[0], f[1], f[2], f[3]); }); };
+    if (document.fonts && document.fonts.load) {
+      Promise.all(faces.map(function (f) { return document.fonts.load(f); })).then(doFit, doFit);
+    } else { doFit(); }
+    window.__cues = { lines: D.items.map(function (x) { return x.t; }), stamp: D.stamp && D.stamp.t, tear: TEAR, total: totalT };
+  }
+  build();
+})();
+</script>
+</body>
+</html>

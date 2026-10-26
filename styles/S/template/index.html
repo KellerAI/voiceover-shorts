@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style S: Teletext pages, __S_TITLE__</title>
+<!--
+  Style S template (canonical look: the reference lookdev, read only). A 1980s text service
+  (KTEXT) on a 40x24 grid: one page per narration chapter, painted on a canvas by draw(t) from a
+  paused GSAP clock, with a fastext key press, a rolling page counter and a top-down repaint on
+  every page turn, a CRT jolt and roll bar, phosphor glow, scanlines and curvature.
+  build.py injects the plan (D) derived from the words file; nothing here is S49-specific.
+  Changes from the canonical: body text and captions use the bundled OFL Comic Shanns (was the
+  system Andale Mono), the sloppy note uses the bundled OFL Virgil, DOM captions are 46 px (were
+  30 px), the mosaic face gained J/Q/Z, digits and . ! - ' glyphs, and the canvas P999 end page
+  is replaced by the shared kit/endcard.js, cut in 0.1 s after the last word and held 2 s with a
+  slow push so the hold never freezes. During the camera pushes only the top caption fades; the
+  bottom caption stays up so the lower third never empties while the zoomed screen is full-bleed.
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KTele"; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KBad"; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:1080px; height:1920px; overflow:hidden; background:#202020; }
+#root { position:relative; width:1080px; height:1920px; overflow:hidden; background:radial-gradient(90% 60% at 50% 50%, #10243E 0%, #0F1B2D 45%, #070b12 100%); }
+#tv { position:absolute; left:0; top:168px; width:1080px; height:1584px; border-radius:34px; overflow:hidden; background:#04060a; box-shadow:0 0 0 10px #202020, 0 30px 90px rgba(0,0,0,0.7); transform-origin:540px 792px; }
+#cam { position:absolute; left:0; top:0; width:1080px; height:1920px; transform-origin:540px 960px; }
+#scr, #glow { position:absolute; left:0; top:0; width:1080px; height:1584px; }
+#glow { filter:blur(9px); opacity:0.55; mix-blend-mode:screen; }
+#lines { position:absolute; inset:0; background:repeating-linear-gradient(0deg, rgba(0,0,0,0.30) 0px, rgba(0,0,0,0.30) 2px, transparent 2px, transparent 5px); pointer-events:none; }
+#curv { position:absolute; inset:0; background:radial-gradient(120% 95% at 50% 50%, transparent 62%, rgba(0,0,0,0.55) 100%); box-shadow: inset 0 0 60px rgba(0,0,0,0.8); pointer-events:none; }
+#sheen { position:absolute; left:-200px; top:-300px; width:900px; height:700px; background:radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,0.06), transparent 70%); pointer-events:none; }
+#roll { position:absolute; left:0; width:1080px; height:140px; top:-200px; background:linear-gradient(transparent, rgba(255,255,255,0.07), transparent); pointer-events:none; }
+.cap { position:absolute; left:40px; right:40px; height:60px; font-family:"KTele"; font-size:46px; line-height:60px; letter-spacing:0.04em; color:#A9AEAE; display:flex; justify-content:space-between; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__S_DURATION__">
+  <div class="cap" style="top:56px"><span id="capTL"></span><span id="capTR"></span></div>
+  <div id="cam"><div id="tv" data-layout-allow-occlusion>
+    <canvas id="scr" width="1080" height="1584"></canvas>
+    <canvas id="glow" width="1080" height="1584"></canvas>
+    <div id="roll"></div><div id="lines"></div><div id="sheen"></div><div id="curv"></div>
+  </div></div>
+  <div class="cap" style="top:1794px"><span id="capBL"></span><span id="capBR"></span></div>
+  <audio id="narration" src="assets/voice_norm.wav" data-start="0" data-duration="__S_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__S_SFX_DURATION__" data-volume="1"></audio>
+</div>
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = /*__S_DATA__*/null;
+  var DUR = D.duration, OX = 40, CW = 25, RH = 66, FPS = 30;
+  var PAL = { W:"#f4f4f4", R:"#ff3b30", G:"#2ee35a", Y:"#ffe23a", B:"#2f5bff", M:"#ff3df2", C:"#2fe9ff", K:"#04060a", g:"#8B9090", N:"#10243E", T:"#202020" };
+  var FLIPS = D.flips;            // page 2..5 start times
+  var PAGES = D.pages;            // five page numbers
+  var scr = document.getElementById("scr"), ctx = scr.getContext("2d");
+  var glow = document.getElementById("glow"), gctx = glow.getContext("2d");
+  var camEl = document.getElementById("cam"), caps = document.querySelectorAll(".cap");
+  document.getElementById("capTL").textContent = D.caps[0];
+  document.getElementById("capTR").textContent = D.caps[1];
+  document.getElementById("capBL").textContent = D.caps[2];
+  document.getElementById("capBR").textContent = D.caps[3];
+
+  // 5x7 mosaic face (SAA5050-style block pixels), used for every headline
+  var F5 = {
+    A:["01110","10001","10001","11111","10001","10001","10001"], B:["11110","10001","10001","11110","10001","10001","11110"],
+    C:["01111","10000","10000","10000","10000","10000","01111"], D:["11110","10001","10001","10001","10001","10001","11110"],
+    E:["11111","10000","10000","11110","10000","10000","11111"], F:["11111","10000","10000","11110","10000","10000","10000"],
+    G:["01111","10000","10000","10011","10001","10001","01111"], H:["10001","10001","10001","11111","10001","10001","10001"],
+    I:["11111","00100","00100","00100","00100","00100","11111"], J:["00111","00010","00010","00010","00010","10010","01100"],
+    K:["10001","10010","10100","11000","10100","10010","10001"], L:["10000","10000","10000","10000","10000","10000","11111"],
+    M:["10001","11011","10101","10101","10001","10001","10001"], N:["10001","11001","10101","10011","10001","10001","10001"],
+    O:["01110","10001","10001","10001","10001","10001","01110"], P:["11110","10001","10001","11110","10000","10000","10000"],
+    Q:["01110","10001","10001","10001","10101","10010","01101"], R:["11110","10001","10001","11110","10100","10010","10001"],
+    S:["01111","10000","10000","01110","00001","00001","11110"], T:["11111","00100","00100","00100","00100","00100","00100"],
+    U:["10001","10001","10001","10001","10001","10001","01110"], V:["10001","10001","10001","10001","01010","01010","00100"],
+    W:["10001","10001","10001","10101","10101","11011","10001"], X:["10001","10001","01010","00100","01010","10001","10001"],
+    Y:["10001","10001","01010","00100","00100","00100","00100"], Z:["11111","00001","00010","00100","01000","10000","11111"],
+    "0":["01110","10001","10011","10101","11001","10001","01110"], "1":["00100","01100","00100","00100","00100","00100","01110"],
+    "2":["01110","10001","00001","00010","00100","01000","11111"], "3":["11111","00010","00100","00010","00001","10001","01110"],
+    "4":["00010","00110","01010","10010","11111","00010","00010"], "5":["11111","10000","11110","00001","00001","10001","01110"],
+    "6":["00110","01000","10000","11110","10001","10001","01110"], "7":["11111","00001","00010","00100","01000","01000","01000"],
+    "8":["01110","10001","10001","01110","10001","10001","01110"], "9":["01110","10001","10001","01111","00001","00010","01100"],
+    "?":["01110","10001","00001","00110","00100","00000","00100"], "&":["01100","10010","10100","01000","10101","10010","01101"],
+    "!":["00100","00100","00100","00100","00100","00000","00100"], "-":["00000","00000","00000","11111","00000","00000","00000"],
+    ".":["00000","00000","00000","00000","00000","01100","01100"], "'":["00100","00100","01000","00000","00000","00000","00000"]
+  };
+  var HEAD = [
+    "......xx........","......xx........","..xxxxxxxxxxxx..",".x............x.",".x..xxx..xxx..x.",".x..xxx..xxx..x.",
+    ".x............x.","xx............xx","xx...xxxxxx...xx",".x...x.x.x.x..x.",".x...xxxxxx...x.",".x............x.",
+    "..xxxxxxxxxxxx..",".....x....x.....","..xxxxxxxxxxxx..",".x............x.","x..............x","x..............x"];
+  var BANK = [
+    "...................xx...................","................xxxxxxxx................","............xxxxxxxxxxxxxxxx............",
+    "........xxxxxxxxxxxxxxxxxxxxxxxx........","....xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx....","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "........................................","..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..","........................................",
+    "...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..",
+    "...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..",
+    "...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..","...xxx.....xxx.....xxx.....xxx.....xxx..",
+    "........................................","..xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"];
+  function inPoly(x, y, p) { var c = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { if (((p[i][1] > y) != (p[j][1] > y)) && (x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0])) c = !c; } return c; }
+  // official Keller AI logo polygons (640 px viewBox): white K, grey slash, graphite tile
+  var LP = { W:[[[154,128],[231,128],[231,294],[154,385]], [[154,414],[231,414],[231,512],[154,512]], [[345,321],[511,512],[416,512],[296,376]]], g:[[[400,128],[489,128],[154,512],[154,414]]] };
+  var LOGO = []; var LN = 40;
+  for (var y = 0; y < LN; y++) { var row = ""; for (var x = 0; x < LN; x++) {
+    var px = (x + 0.5) * 640 / LN, py = (y + 0.5) * 640 / LN, ch = "T";
+    LP.g.forEach(function (p) { if (inPoly(px, py, p)) ch = "g"; });
+    LP.W.forEach(function (p) { if (inPoly(px, py, p)) ch = "W"; });
+    row += ch; } LOGO.push(row); }
+
+  // ---------- primitives ----------
+  function cellBg(r, c0, c1, col) { ctx.fillStyle = PAL[col]; ctx.fillRect(c0 ? OX + c0 * CW : 0, r * RH, (c1 - c0) * CW + (c0 ? 0 : OX) + (c1 >= 40 ? OX : 0), RH); }
+  function txt(r, c, s, col, dh, bg) {
+    if (bg) cellBg(r, c, c + s.length, bg);
+    ctx.save(); ctx.fillStyle = PAL[col]; ctx.font = '44px "KTele"'; ctx.textBaseline = "alphabetic";
+    ctx.translate(0, (r + 1) * RH - 12); ctx.scale(1, 1.3);
+    for (var i = 0; i < s.length; i++) ctx.fillText(s[i], OX + (c + i) * CW, 0);
+    ctx.restore();
+  }
+  // mosaic text in pixels: pw x ph per block pixel, advance 6*pw
+  function mz(s, x, y, pw, ph, col, n) {
+    n = n === undefined ? s.length : Math.min(n, s.length); ctx.fillStyle = PAL[col] || col;
+    for (var i = 0; i < n; i++) { var g = F5[s[i]]; if (!g) continue;
+      for (var r = 0; r < 7; r++) for (var c = 0; c < 5; c++) if (g[r][c] === "1") ctx.fillRect(x + i * 6 * pw + c * pw, y + r * ph, pw + 0.6, ph + 0.6); }
+  }
+  function mzw(s, pw) { return s.length * 6 * pw - pw; }
+  function fit(s, pw, w) { return Math.min(pw, (w || 1000) / Math.max(1, 6 * s.length - 1)); }
+  function mzc(s, y, pw, ph, col, n) { var p = fit(s, pw); mz(s, Math.round((1080 - mzw(s, p)) / 2), y, p, ph, col, n); }
+  function hdr(col, title) { cellBg(2, 0, 40, col); cellBg(3, 0, 40, col); var p = fit(title, 9); mz(title, 40, 139, p, 17, col === "Y" || col === "G" ? "K" : "W"); }
+  function pxmap(rows, x, y, pw, ph, col, frac) {
+    var lim = frac === undefined ? rows.length : Math.floor(rows.length * frac);
+    for (var r = 0; r < lim; r++) for (var c = 0; c < rows[r].length; c++) { var ch = rows[r][c]; if (ch === ".") continue;
+      ctx.fillStyle = PAL[col]; ctx.fillRect(x + c * pw, y + r * ph, pw + 0.6, ph + 0.6); }
+  }
+  function logo(x, y, cell, frac) {
+    var lim = Math.floor(LN * frac), cols = { W:"#ffffff", g:PAL.g, T:"#202020" };
+    for (var r = 0; r < lim; r++) for (var c = 0; c < LN; c++) { ctx.fillStyle = cols[LOGO[r][c]]; ctx.fillRect(x + c * cell, y + r * cell, cell + 0.6, cell + 0.6); }
+  }
+  function at(t, s) { return t >= s; }
+  function prog(t, s, d) { return Math.max(0, Math.min(1, (t - s) / d)); }
+  function eo(k) { return 1 - Math.pow(1 - k, 3); }
+  function ei(k) { return k * k * k; }
+  function flash(t) { return Math.floor(t * 2.2) % 3 !== 2; }
+  function typed(t, x) { return Math.floor(prog(t, x.t, x.dur) * (x.text.length - 0.01)) + 1; }
+  // a headline made of spoken words: words show on their own start time, wrapped into lines
+  function words(t, list, y0, dy, pw, ph, cols) {
+    var lines = [];
+    list.forEach(function (w) { (lines[w.line] = lines[w.line] || []).push(w); });
+    lines.forEach(function (ws, li) {
+      var full = ws.map(function (w) { return w.text; }).join(" "), p = fit(full, pw), x = Math.round((1080 - mzw(full, p)) / 2), off = 0;
+      ws.forEach(function (w) { if (at(t, w.t)) mz(w.text, x + off * 6 * p, y0 + li * dy, p, ph, cols[li % cols.length]); off += w.text.length + 1; });
+    });
+  }
+
+  // ---------- pages ----------
+  var P = [];
+  P[0] = function (t) { // index page: cover card, then the title types in on its words
+    var d = D.p1;
+    hdr("B", d.head);
+    d.body.forEach(function (b, i) { if (at(t, b.t)) txt(5 + i, 2, b.text, "C"); });
+    if (t < d.title[0].t) {
+      if (!(t > d.title[0].t - 0.27 && Math.floor(t * 30) % 2)) {
+        logo(50, 470, 9, 0.15 + 0.85 * prog(t, 0.0, 0.45));
+        var c = d.cover, p0 = fit(c[0], 12.5, 620);
+        mz(c[0], 420, 480, p0, 22, "Y", Math.floor((t - 0.2) / 0.09) + 1);
+        if (c[1] && t > 0.6) mz(c[1], 420, 690, fit(c[1], 12.5, 620), 22, "C", Math.floor((t - 0.6) / 0.12) + 1);
+      }
+    } else {
+      d.title.forEach(function (x, i) { if (at(t, x.t)) mzc(x.text, 462 + i * 220, 12.5, 22, i ? "W" : "Y", typed(t, x)); });
+    }
+    for (var i = 0; i < d.index.length; i++) {
+      if (!at(t, i * 0.05)) continue;
+      var hi = i === 0 && at(t, d.hiT);
+      txt(15 + i * 2, 3, d.index[i][0], hi ? "K" : "W", false, hi ? "W" : null);
+      txt(15 + i * 2, 31, d.index[i][1], hi ? "K" : "C", false, hi ? "C" : null);
+    }
+  };
+  P[1] = function (t) { // chart page: headline on its words, bars rise
+    var d = D.p2;
+    hdr("M", d.head);
+    if (d.lead) txt(5, 2, d.lead, "C");
+    words(t, d.headline, 450, 150, 11, 19, ["Y", "G"]);
+    txt(10, 2, d.chart[0], "g"); txt(11, 2, d.chart[1], "g");
+    var h = [9, 13, 11, 15, 3], cols = ["C", "G", "Y", "M", "C"];
+    ctx.fillStyle = PAL.g; ctx.fillRect(OX + 4 * 12.5, 55 * 22 - 4, 1000 - 8 * 12.5, 4);
+    for (var i = 0; i < 5; i++) {
+      var p = prog(t, d.barT + i * 0.16, 0.6), hh = Math.round(h[i] * 1.2 * p);
+      for (var y = 0; y < hh; y++) for (var x = 0; x < 8; x++) { ctx.fillStyle = PAL[cols[i]]; ctx.fillRect(OX + (6 + i * 15 + x) * 12.5, (54 - y) * 22, 13.1, 22.6); }
+      txt(19, 2 + i * 7 + 1, d.bars[i], "W");
+    }
+    if (at(t, d.footT)) txt(21, 2, d.foot, "Y");
+  };
+  P[2] = function (t) { // model A checks model B: sloppy note, LGTM stamp
+    var d = D.p3;
+    hdr("G", d.head);
+    pxmap(HEAD, 60, 330, 14, 16, "C"); txt(10, 2, d.labelA, "C");
+    if (at(t, d.bT)) { pxmap(HEAD, 796, 330, 14, 16, "M"); txt(10, 38 - d.labelB.length, d.labelB, "M"); }
+    if (at(t, d.arrowT)) {
+      var n = Math.floor(prog(t, d.arrowT, 0.4) * 9.99); ctx.fillStyle = PAL.Y;
+      for (var i = 0; i < n; i++) ctx.fillRect(330 + i * 46, 498, 28, 18);
+      if (n >= 9) { ctx.fillRect(748, 478, 20, 14); ctx.fillRect(758, 492, 20, 14); ctx.fillRect(758, 510, 20, 14); ctx.fillRect(748, 524, 20, 14); }
+      txt(6, 20 - Math.ceil(d.verb.length / 2), d.verb, "Y");
+    }
+    if (at(t, d.noteT - 0.05)) txt(11, 2, d.workLabel, "W");
+    if (at(t, d.noteT)) { // the sloppy note
+      var p = eo(prog(t, d.noteT, 0.28)), sizes = [150, 105, 60], colsN = ["#d1225b", "#d1225b", "#3355cc"], ys = [-60, 60, 175], rots = [0, 0.03, -0.025];
+      ctx.save(); ctx.translate(540, 1050 + (1 - p) * 70); ctx.rotate(-0.045); ctx.globalAlpha = p;
+      ctx.fillStyle = "#fff8d6"; ctx.fillRect(-480, -230, 960, 460);
+      ctx.fillStyle = "#ece0a8"; ctx.fillRect(-480, -230, 960, 18);
+      for (var k = 0; k < d.note.length; k++) {
+        ctx.save(); ctx.rotate(rots[k]); ctx.fillStyle = colsN[k];
+        var fs = sizes[k]; ctx.font = fs + 'px "KBad"';
+        var w = ctx.measureText(d.note[k]).width; if (w > 870) { fs = Math.floor(fs * 870 / w); ctx.font = fs + 'px "KBad"'; }
+        ctx.fillText(d.note[k], -430, ys[k]); ctx.restore();
+      }
+      ctx.restore();
+    }
+    if (at(t, d.stampT)) { // stamp slam: overshoot, then a held shake
+      var dd = t - d.stampT, s;
+      if (dd < 0.08) s = 2.8 - 1.9 * (dd / 0.08); else if (dd < 0.2) s = 0.9 + 0.16 * ((dd - 0.08) / 0.12); else s = 1.06 - 0.06 * Math.min(1, (dd - 0.2) / 0.2);
+      var amp = 16 * Math.max(0, 1 - dd / 0.9), sx = Math.sin(dd * 95) * amp, sy = Math.cos(dd * 83) * amp * 0.7;
+      ctx.save(); ctx.translate(868 + sx, 1030 + sy); ctx.rotate(-0.2); ctx.scale(s * 0.72, s * 0.72);
+      ctx.fillStyle = "#0a3d1a"; ctx.fillRect(-270, -125, 540, 250);
+      ctx.strokeStyle = PAL.G; ctx.lineWidth = 14; ctx.strokeRect(-270, -125, 540, 250);
+      var sp = fit(d.stamp, 20, 460); mz(d.stamp, -mzw(d.stamp, sp) / 2, -70, sp, 20, "G");
+      ctx.restore();
+      txt(20, 2, d.stampFoot, "G");
+    }
+  };
+  P[3] = function (t) { // the stack: one word per line on its word, the negation flashes
+    var d = D.p4;
+    hdr("R", d.head);
+    if (d.lead) txt(5, 2, d.lead, "C");
+    d.stack.forEach(function (w, i) {
+      if (!at(t, w.t)) return;
+      var y = 440 + i * 150;
+      if (w.hot) { if (t > w.t + 0.52 || flash(t - w.t)) { ctx.fillStyle = PAL.R; ctx.fillRect(0, y - 18, 1080, 150); mzc(w.text, y, 12.5, 18, "W"); } }
+      else mzc(w.text, y, 12.5, 18, i === 0 ? "Y" : "W");
+    });
+    pxmap(HEAD, 60, 1060, 14, 15, "C"); pxmap(HEAD, 796, 1060, 14, 15, "C");
+    if (at(t, d.eqT)) { // big mosaic '=' between the identical heads
+      var k = prog(t, d.eqT, 0.15), sc = k < 1 ? 1.6 - 0.6 * eo(k) : 1;
+      ctx.fillStyle = Math.floor((t - d.eqT) * 7) % 2 ? PAL.W : PAL.Y;
+      var w = 300 * sc, hh = 38 * sc, g = 36 * sc;
+      ctx.fillRect(540 - w / 2, 1195 - g / 2 - hh, w, hh); ctx.fillRect(540 - w / 2, 1195 + g / 2, w, hh);
+    }
+    if (at(t, d.footT)) txt(21, 2, d.foot, "Y");
+  };
+  P[4] = function (t) { // final page: two mosaic lines, then the icon builds column by column
+    var d = D.p5;
+    hdr("Y", d.head);
+    if (d.lead) txt(5, 2, d.lead, "C");
+    if (at(t, d.l1.t)) mz(d.l1.text, 40, 420, fit(d.l1.text, 12.5), 18, "Y");
+    if (d.l2.text && at(t, d.l2.t)) mz(d.l2.text, 40, 566, fit(d.l2.text, 12.5), 18, "W", typed(t, d.l2));
+    var T0 = d.buildT, st = d.buildStep;
+    if (d.icon === "bank") {
+      var x0 = 40, y0 = 740, pw = 25, ph = 22; ctx.fillStyle = PAL.Y;
+      for (var r = 0; r < BANK.length; r++) for (var c = 0; c < 40; c++) {
+        if (BANK[r][c] !== "x") continue;
+        var vis;
+        if (r >= 19) vis = t >= T0;
+        else if (r >= 9 && r <= 17) { var kk = Math.floor((c - 3) / 8); vis = (17 - r) / 9 <= prog(t, T0 + kk * st, 0.3) - 0.0001 || (r === 17 && t >= T0 + kk * st); }
+        else if (r === 7) vis = t >= T0 + 5 * st + 0.1;
+        else vis = (5 - r) / 6 <= prog(t, T0 + 5 * st + 0.15, 0.25);
+        if (vis) ctx.fillRect(x0 + c * pw, y0 + r * ph, pw + 0.6, ph + 0.6);
+      }
+    } else if (at(t, T0)) {
+      logo(290, 720, 12.5, prog(t, T0, 5 * st));
+    }
+    if (at(t, d.footT)) txt(19, 2, d.foot, "W");
+  };
+
+  var CLOCK0 = D.clock;  // [hh, mm, ss] at t = 0
+  function header(t, num, searching) {
+    var sec = CLOCK0[2] + Math.floor(t), mm = CLOCK0[1] + Math.floor(sec / 60), ss = sec % 60;
+    txt(0, 0, "P" + num, searching ? "G" : "W");
+    txt(0, 5, D.service, "C");
+    txt(0, 11, searching ? "" + num : PAGES[cur], "W");
+    txt(0, 16, D.date, "W");
+    txt(0, 27, CLOCK0[0] + ":" + (mm < 10 ? "0" : "") + mm + "/" + (ss < 10 ? "0" : "") + ss, "Y");
+  }
+  function fastext(t, pressKey) {
+    var labs = D.fastext, cc = ["R", "G", "Y", "C"];
+    for (var i = 0; i < 4; i++) {
+      var down = pressKey === i;
+      if (down) cellBg(23, i * 10, i * 10 + 10, cc[i]);
+      txt(23, i * 10 + 1, labs[i], down ? "K" : cc[i]);
+    }
+  }
+  var cur = 0;
+  function cam(t) {
+    var s = 1 + 0.02 * t / DUR, ox = 540, oy = 960, k, C = D.cam;
+    if (t >= C.titleT - 0.22 && t < FLIPS[0] + 0.14) { k = eo(prog(t, C.titleT, 0.5)) * (1 - ei(prog(t, FLIPS[0] - 0.1, 0.1))); s += 0.28 * k; oy = 817; }   // push-in on the title
+    else if (t >= C.punchT - 0.08 && t < C.punchT + 1.42) { k = eo(prog(t, C.punchT, 0.2)) * (1 - eo(prog(t, C.punchT + 0.47, 0.75))); s += 0.5 * k; oy = 672; } // punch on the stack
+    else if (t >= C.stampT && t < C.stampT + 0.4) { s += 0.05 * Math.max(0, 1 - (t - C.stampT) / 0.25); ox = 760; oy = 1358; }                             // stamp thud
+    return [s, ox, oy];
+  }
+  function draw(t) {
+    ctx.clearRect(0, 0, 1080, 1584);
+    ctx.fillStyle = PAL.K; ctx.fillRect(0, 0, 1080, 1584);
+    var i = 0; while (i < FLIPS.length && t >= FLIPS[i]) i++;
+    cur = i;
+    var since = i ? t - FLIPS[i - 1] : 99, roll = 0.07, paint = 0.10;
+    var nextF = FLIPS[i], press = null;
+    if (nextF !== undefined && t > nextF - 0.32) press = [1, 1, 1, 2][i];
+    P[i](t);
+    if (since < roll + paint) { // header bar + title are already up; body repaints top to bottom
+      var rd = since < roll ? 0 : Math.floor((since - roll) / paint * 19);
+      ctx.fillStyle = PAL.K; ctx.fillRect(0, (4 + rd) * RH, 1080, (23 - 4 - rd) * RH);
+    }
+    if (since < roll) { var from = +PAGES[i - 1], to = +PAGES[i], kk = Math.floor(since / roll * 3); header(t, kk >= 2 ? to : from + Math.round((to - from) * (kk + 1) / 3) + (kk * 37) % 9, true); }
+    else header(t, PAGES[i], false);
+    fastext(t, press);
+    gctx.clearRect(0, 0, 1080, 1584); gctx.drawImage(scr, 0, 0);
+    var c = cam(t); camEl.style.transformOrigin = c[1] + "px " + c[2] + "px"; caps[0].style.opacity = c[0] > 1.07 ? 0 : 1; camEl.style.transform = "scale(" + c[0].toFixed(4) + ")";
+  }
+
+  function build() {
+    if (window.__timelines["main"]) return;
+    var root = document.getElementById("root");
+    var END = parseFloat(root.getAttribute("data-duration"));
+    var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+    if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style S: data-duration " + END + " != end-card plan end " + plan.end);
+    var tl = gsap.timeline({ paused: true });
+    var clock = { t: 0 };
+    tl.to(clock, { t: END, duration: END, ease: "none", onUpdate: function () { draw(clock.t); } }, 0);
+    FLIPS.forEach(function (F) {
+      tl.fromTo("#tv", { y: 0, scaleY: 1 }, { keyframes: [{ y: -9, scaleY: 1.006, duration: 0.05 }, { y: 4, scaleY: 0.998, duration: 0.07 }, { y: 0, scaleY: 1, duration: 0.18, ease: "power2.out" }] }, F);
+      tl.fromTo("#roll", { top: -200 }, { top: 1700, duration: 0.5, ease: "power1.in" }, F);
+    });
+    // end card (kit/endcard.js) by a hard cut; a slow push keeps the hold moving
+    var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+    var lg = card.querySelector(".ka-endcard-logo");
+    tl.to(lg, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+    var cname = card.querySelector(".ka-endcard-name");
+    if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+    tl.set({}, {}, END);
+    window.__timelines["main"] = tl;
+    window.__cues = { flips: FLIPS, endcard: plan.start };
+    draw(0);
+  }
+  var loads = [document.fonts.load('44px "KTele"'), document.fonts.load('62px "KBad"'), document.fonts.load('150px "KS Lilita"')];
+  Promise.all(loads).then(function () { return document.fonts.ready; }).then(build, build);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,704 @@
+{
+  "schema_version": 1,
+  "lookdev_root": "_kit/lookdev",
+  "feedback_file": "_kit/lookdev/share/Review/Shorts-Feedback.md",
+  "unlicensed_fonts_d4": ["Comic Sans MS", "Marker Felt", "Chalkduster", "SF Pro", "SF Mono"],
+  "styles": [
+    {
+      "key": "A",
+      "name": "Kinetic type",
+      "canonical_dir": "dir-A",
+      "source_files": ["dir-A/index.html", "dir-A/notes.md", "dir-A/lookA.mp4"],
+      "variants": [],
+      "content_fit": ["press-data"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:36 'Too fast and needs polish but could be used for press release pure data videos'",
+        "Shorts-Feedback.md:18 pacing runs fast",
+        "Shorts-Feedback.md:19 A for press-release data videos",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Avenir Next Condensed, Didot, Menlo"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Avenir Next Condensed", "Didot", "Menlo"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "B",
+      "name": "Cinematic depth",
+      "canonical_dir": "dir-B",
+      "source_files": ["dir-B/index.html", "dir-B/notes.md", "dir-B/lookB.mp4"],
+      "variants": [],
+      "content_fit": ["workflow", "time-based"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:50 'Needs polish but would be good for time based or workflow videos'",
+        "Shorts-Feedback.md:19 B for time-based or workflow videos",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Didot, Menlo"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Didot", "Menlo"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "C",
+      "name": "Product UI",
+      "canonical_dir": "dir-C",
+      "source_files": [
+        "dir-C/project/index.html",
+        "dir-C/notes.md",
+        "dir-C/sfx_gen.py",
+        "dir-C/project/kit/gsap.min.js",
+        "dir-C/lookC.mp4",
+        "dir-C/project/assets/fonts/SFNS.ttf",
+        "dir-C/project/assets/fonts/SFNSMono.ttf"
+      ],
+      "variants": [
+        {
+          "key": "C-S37",
+          "dir": "r3-S37-C",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "C-S43",
+          "dir": "r3-S43-C",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "C-S49",
+          "dir": "r3-S49-C",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "C-S69",
+          "dir": "r3-S69-C",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "full-S49",
+          "dir": "r8-S49-full-C",
+          "note": "round 8 full-length S49"
+        }
+      ],
+      "content_fit": ["ui"],
+      "owner_rank": 2,
+      "notes": [
+        "Shorts-Feedback.md:64 'Close second, best when there are actual UI/UX functions to show.'",
+        "Shorts-Feedback.md:21 leaders: D, then C ('close second')",
+        "Shorts-Feedback.md:19 C for real UI/UX"
+      ],
+      "fonts": {
+        "unlicensed": ["SF Pro", "SF Mono"],
+        "bundled_ofl": [],
+        "system_other": [],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "D",
+      "name": "Reel style",
+      "canonical_dir": "dir-D",
+      "source_files": [
+        "dir-D/project/index.html",
+        "dir-D/notes.md",
+        "dir-D/project/kit/tokens.css",
+        "dir-D/project/kit/gsap.min.js",
+        "dir-D/lookD.mp4",
+        "dir-D/lookD_review.mp4"
+      ],
+      "variants": [
+        {
+          "key": "full-S49",
+          "dir": "r8-S49-full-D",
+          "note": "round 8 full-length S49"
+        }
+      ],
+      "content_fit": ["symbolic"],
+      "owner_rank": 1,
+      "notes": [
+        "Shorts-Feedback.md:78 'Best so far, some alignment tweaks to match the line following in the first segment. Better for symbolic work'",
+        "Shorts-Feedback.md:21 leaders: D ('best so far') first",
+        "Shorts-Feedback.md:20 needs type aligned to the line-follow in the first segment",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Menlo, Helvetica Neue, Arial"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": [],
+        "system_other": ["Menlo", "Helvetica Neue", "Arial"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "E",
+      "name": "UI + kinetic type",
+      "canonical_dir": "r2-15s-E",
+      "source_files": [
+        "r2-15s-E/project/index.html",
+        "r2-15s-E/look.mp4",
+        "r2-15s-E/notes.md",
+        "r2-15s-E/sfx_gen.py",
+        "r2-15s-E/project/kit/gsap.min.js"
+      ],
+      "variants": [
+        {
+          "key": "E-S37",
+          "dir": "r3-S37-E",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "E-S43",
+          "dir": "r3-S43-E",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "E-S49",
+          "dir": "r3-S49-E",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "E-S69",
+          "dir": "r3-S69-E",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "full-S49",
+          "dir": "r8-S49-full-E",
+          "note": "round 8 full-length S49"
+        }
+      ],
+      "content_fit": ["general"],
+      "owner_rank": 3,
+      "notes": [
+        "Shorts-Feedback.md:96 'Cleanest so far, small speed tweaks to the effects'",
+        "Shorts-Feedback.md:21 third leader ('cleanest so far')",
+        "Shorts-Feedback.md:17 clean beats busy",
+        "Shorts-Feedback.md:460 open decision: E as general-purpose fallback (unconfirmed)",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Avenir Next Condensed, Didot, Menlo"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS", "Marker Felt", "Chalkduster"],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Avenir Next Condensed", "Didot", "Menlo"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "F",
+      "name": "Isometric",
+      "canonical_dir": "r2-15s-F",
+      "source_files": [
+        "r2-15s-F/project/index.html",
+        "r2-15s-F/look.mp4",
+        "r2-15s-F/notes.md",
+        "r2-15s-F/project/kit/gsap.min.js"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:110 'This one needs some polish but a decent style'",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Menlo"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS", "Marker Felt"],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Menlo"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "G",
+      "name": "Editorial print",
+      "canonical_dir": "r2-15s-G",
+      "source_files": [
+        "r2-15s-G/project/index.html",
+        "r2-15s-G/look.mp4",
+        "r2-15s-G/notes.md",
+        "r2-15s-G/sfx_gen.py",
+        "r2-15s-G/project/kit/gsap.min.js"
+      ],
+      "variants": [
+        {
+          "key": "G-S37",
+          "dir": "r3-S37-G",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "G-S43",
+          "dir": "r3-S43-G",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "G-S49",
+          "dir": "r3-S49-G",
+          "note": "round 3 rebrand"
+        },
+        {
+          "key": "G-S69",
+          "dir": "r3-S69-G",
+          "note": "round 3 rebrand"
+        }
+      ],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:124 'This one is too busy'",
+        "Shorts-Feedback.md:17 'G is too busy'",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Didot, Futura, Bodoni 72, American Typewriter, Copperplate, Courier New, Papyrus, Herculanum"
+      ],
+      "fonts": {
+        "unlicensed": ["Chalkduster", "Comic Sans MS", "Marker Felt"],
+        "bundled_ofl": [],
+        "system_other": [
+          "Didot",
+          "Futura",
+          "Bodoni 72",
+          "American Typewriter",
+          "Copperplate",
+          "Courier New",
+          "Papyrus",
+          "Herculanum"
+        ],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "H",
+      "name": "Terminal dataviz",
+      "canonical_dir": "r2-15s-H",
+      "source_files": [
+        "r2-15s-H/project/index.html",
+        "r2-15s-H/look.mp4",
+        "r2-15s-H/notes.md",
+        "r2-15s-H/sfx_gen.py",
+        "r2-15s-H/project/kit/gsap.min.js"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:138 'Too much going on but over all style might work with polish'",
+        "Shorts-Feedback.md:17 'H has too much going on'",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Avenir Next Condensed, Menlo, Papyrus"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS", "Marker Felt", "Chalkduster"],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Avenir Next Condensed", "Menlo", "Papyrus"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "I",
+      "name": "Swiss modernist poster",
+      "canonical_dir": "r4-S49-I",
+      "source_files": [
+        "r4-S49-I/project/index.html",
+        "r4-S49-I/look.mp4",
+        "r4-S49-I/look_v2.mp4",
+        "r4-S49-I/notes.md",
+        "r4-S49-I/sfx_gen.py",
+        "r4-S49-I/project/kit/gsap.min.js"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:212 pending the owner's review; Shorts-Feedback.md:24 no feedback recorded on I",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Helvetica Neue"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS", "Marker Felt"],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Helvetica Neue"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "J",
+      "name": "Hand-drawn sketchbook",
+      "canonical_dir": "r4-S49-J",
+      "source_files": [
+        "r4-S49-J/project/index.html",
+        "r4-S49-J/look.mp4",
+        "r4-S49-J/look_v2.mp4",
+        "r4-S49-J/notes.md",
+        "r4-S49-J/sfx_gen.py",
+        "r4-S49-J/project/kit/gsap.min.js",
+        "r4-S49-J/project/assets/fonts/ComicShanns.woff2",
+        "r4-S49-J/project/assets/fonts/Virgil.woff2"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:224 pending the owner's review; Shorts-Feedback.md:24 no feedback recorded on J",
+        "font: Marker Felt and Comic Sans MS appear only as unused CSS fallbacks behind bundled Virgil and Comic Shanns (project/index.html:17-18)"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Virgil", "Comic Shanns"],
+        "system_other": [],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "K",
+      "name": "Retro pixel arcade",
+      "canonical_dir": "r4-S49-K",
+      "source_files": [
+        "r4-S49-K/project/index.html",
+        "r4-S49-K/look.mp4",
+        "r4-S49-K/notes.md",
+        "r4-S49-K/sfx_gen.py",
+        "r4-S49-K/project/kit/gsap.min.js"
+      ],
+      "variants": [
+        {
+          "key": "K16",
+          "dir": "r6-S49-K16",
+          "preferred": true,
+          "note": "16-bit; best arcade version so far"
+        },
+        {
+          "key": "K16-cut15",
+          "dir": "r6-S49-K16-cut15",
+          "preferred": true,
+          "note": "15 s cut of K16"
+        },
+        {
+          "key": "K32",
+          "dir": "r6-S49-K32"
+        },
+        {
+          "key": "K32-cut15",
+          "dir": "r6-S49-K32-cut15"
+        },
+        {
+          "key": "K64",
+          "dir": "r6-S49-K64"
+        },
+        {
+          "key": "K64-cut15",
+          "dir": "r6-S49-K64-cut15"
+        },
+        {
+          "key": "Kevo",
+          "dir": "r6-S49-60s-Kevo",
+          "note": "60 s evolution 16->32->64"
+        }
+      ],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:326 '[owner]: 16 Bit is the best arcade versions so far. They all need to have the subtitles removed though.'",
+        "Shorts-Feedback.md:331 K16 is the best arcade version so far; preferred variants K16 (r6-S49-K16) and K16-cut15",
+        "K draws a canvas bitmap font, no system font (r6-S49-K16/notes.md, Fonts section); K itself (r4) has no recorded feedback"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": [],
+        "system_other": [],
+        "bitmap_only": true
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "L",
+      "name": "Thermal receipt",
+      "canonical_dir": "r5L-S49-L",
+      "source_files": [
+        "r5L-S49-L/project/index.html",
+        "r5L-S49-L/look.mp4",
+        "r5L-S49-L/notes.md",
+        "r5L-S49-L/sfx_gen.py",
+        "r5L-S49-L/project/kit/gsap.min.js",
+        "r5L-S49-L/project/assets/ComicShanns.woff2"
+      ],
+      "variants": [],
+      "content_fit": ["press-data", "audit"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:251 'Best for press-release data and audit stories' (director note, not the owner)",
+        "Shorts-Feedback.md:261 pending the owner's review",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Andale Mono"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Comic Shanns"],
+        "system_other": ["Avenir Next", "Andale Mono"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "M",
+      "name": "Blueprint draft",
+      "canonical_dir": "r5M-S49-M",
+      "source_files": [
+        "r5M-S49-M/project/index.html",
+        "r5M-S49-M/look.mp4",
+        "r5M-S49-M/look_v2.mp4",
+        "r5M-S49-M/notes.md",
+        "r5M-S49-M/sfx_gen.py",
+        "r5M-S49-M/project/kit/gsap.min.js",
+        "r5M-S49-M/project/assets/fonts/ComicShanns.woff2",
+        "r5M-S49-M/project/assets/fonts/LilitaOne.woff2",
+        "r5M-S49-M/project/assets/fonts/Virgil.woff2"
+      ],
+      "variants": [],
+      "content_fit": ["workflow", "time-based"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:270 'Best for time-based and workflow videos' (director note)",
+        "Shorts-Feedback.md:279 pending the owner's review",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Menlo, DIN Condensed, DIN Alternate"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Lilita One", "Comic Shanns"],
+        "system_other": ["Menlo", "DIN Condensed", "DIN Alternate"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "N",
+      "name": "Gallery placard",
+      "canonical_dir": "r5N-S49-N",
+      "source_files": [
+        "r5N-S49-N/project/index.html",
+        "r5N-S49-N/look.mp4",
+        "r5N-S49-N/look_v2.mp4",
+        "r5N-S49-N/notes.md",
+        "r5N-S49-N/sfx_gen.py",
+        "r5N-S49-N/project/kit/gsap.min.js",
+        "r5N-S49-N/project/assets/fonts/ComicShanns.woff2",
+        "r5N-S49-N/project/assets/fonts/LilitaOne.woff2"
+      ],
+      "variants": [],
+      "content_fit": ["symbolic"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:288 'Best for symbolic work' (director note)",
+        "Shorts-Feedback.md:298 pending the owner's review",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Menlo, Helvetica Neue, Baskerville"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Lilita One", "Comic Shanns"],
+        "system_other": ["Menlo", "Helvetica Neue", "Baskerville"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "O",
+      "name": "Split-flap board",
+      "canonical_dir": "r5O-S49-O",
+      "source_files": [
+        "r5O-S49-O/project/index.html",
+        "r5O-S49-O/look.mp4",
+        "r5O-S49-O/look_v2.mp4",
+        "r5O-S49-O/notes.md",
+        "r5O-S49-O/sfx_gen.py",
+        "r5O-S49-O/project/kit/gsap.min.js",
+        "r5O-S49-O/project/assets/fonts/ComicShanns.woff2",
+        "r5O-S49-O/project/assets/fonts/Virgil.woff2"
+      ],
+      "variants": [],
+      "content_fit": ["press-data", "status"],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:307 'Best for press-release data and status updates' (director note)",
+        "Shorts-Feedback.md:317 pending the owner's review",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Avenir Next Condensed, DIN Condensed"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Comic Shanns"],
+        "system_other": ["Avenir Next", "Avenir Next Condensed", "DIN Condensed"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "P",
+      "name": "VHS camcorder tape",
+      "canonical_dir": "r7-S49-P",
+      "source_files": [
+        "r7-S49-P/project/index.html",
+        "r7-S49-P/look.mp4",
+        "r7-S49-P/notes.md",
+        "r7-S49-P/sfx_gen.py",
+        "r7-S49-P/project/kit/gsap.min.js"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:403 pending the owner's review; Shorts-Feedback.md:405 critic 4.5/10",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Avenir Next, Futura, Andale Mono"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS", "Marker Felt", "Chalkduster"],
+        "bundled_ofl": [],
+        "system_other": ["Avenir Next", "Futura", "Andale Mono"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "Q",
+      "name": "Handheld LCD",
+      "canonical_dir": "r7-S49-Q",
+      "source_files": [
+        "r7-S49-Q/project/index.html",
+        "r7-S49-Q/look.mp4",
+        "r7-S49-Q/notes.md",
+        "r7-S49-Q/sfx_gen.py",
+        "r7-S49-Q/project/kit/gsap.min.js"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:415 pending the owner's review; Shorts-Feedback.md:417 critic 5",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Futura"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": [],
+        "system_other": ["Futura"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "R",
+      "name": "90s desktop OS",
+      "canonical_dir": "r7-S49-R",
+      "source_files": [
+        "r7-S49-R/project/index.html",
+        "r7-S49-R/look.mp4",
+        "r7-S49-R/notes.md",
+        "r7-S49-R/sfx_gen.py",
+        "r7-S49-R/project/kit/gsap.min.js",
+        "r7-S49-R/project/assets/fonts/disp.ttf",
+        "r7-S49-R/project/assets/fonts/mono.ttf",
+        "r7-S49-R/project/assets/fonts/slop.ttf",
+        "r7-S49-R/project/assets/fonts/ui.ttf",
+        "r7-S49-R/project/assets/fonts/uib.ttf"
+      ],
+      "variants": [
+        {
+          "key": "full-S49",
+          "dir": "r8-S49-full-R",
+          "note": "round 8 full-length S49"
+        }
+      ],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:427 pending the owner's review; Shorts-Feedback.md:429 critic 5",
+        "ships macOS ttfs (Comic Sans MS Bold, Arial Black, Monaco, Geneva, Tahoma); r7-S49-R/notes.md:19 says not cleared for redistribution",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Arial Black, Monaco, Geneva, Tahoma"
+      ],
+      "fonts": {
+        "unlicensed": ["Comic Sans MS"],
+        "bundled_ofl": [],
+        "system_other": ["Arial Black", "Monaco", "Geneva", "Tahoma"],
+        "bitmap_only": false
+      },
+      "font_license": "uncleared",
+      "publishable": false
+    },
+    {
+      "key": "S",
+      "name": "Teletext",
+      "canonical_dir": "r7-S49-S",
+      "source_files": [
+        "r7-S49-S/project/index.html",
+        "r7-S49-S/look.mp4",
+        "r7-S49-S/notes.md",
+        "r7-S49-S/sfx_gen.py",
+        "r7-S49-S/project/kit/gsap.min.js",
+        "r7-S49-S/project/assets/ComicShanns.woff2"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:439 pending the owner's review; Shorts-Feedback.md:441 critic 5.5",
+        "other macOS system fonts (not on the D4 unlicensed list, license unverified): Andale Mono"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Comic Shanns"],
+        "system_other": ["Andale Mono"],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    },
+    {
+      "key": "T",
+      "name": "Dot-matrix printout",
+      "canonical_dir": "r7-S49-T",
+      "source_files": [
+        "r7-S49-T/project/index.html",
+        "r7-S49-T/look.mp4",
+        "r7-S49-T/notes.md",
+        "r7-S49-T/sfx_gen.py",
+        "r7-S49-T/project/kit/gsap.min.js",
+        "r7-S49-T/project/assets/ComicShanns.woff2"
+      ],
+      "variants": [],
+      "content_fit": [],
+      "owner_rank": null,
+      "notes": [
+        "Shorts-Feedback.md:451 pending the owner's review; Shorts-Feedback.md:453 printout paraphrases narration"
+      ],
+      "fonts": {
+        "unlicensed": [],
+        "bundled_ofl": ["Comic Shanns"],
+        "system_other": [],
+        "bitmap_only": false
+      },
+      "font_license": "cleared",
+      "publishable": true
+    }
+  ]
+}

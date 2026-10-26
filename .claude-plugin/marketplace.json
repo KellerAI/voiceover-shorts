@@ -1,0 +1,13 @@
+{
+  "name": "voiceover-shorts",
+  "description": "Turn a timestamped voiceover into short-form video renders",
+  "owner": {
+    "name": "KellerAI"
+  },
+  "plugins": [
+    {
+      "name": "voiceover-shorts",
+      "source": "./"
+    }
+  ]
+}

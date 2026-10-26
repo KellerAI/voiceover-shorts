@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, height=1920"/>
+<title>Style R - 90s desktop - __R_TITLE__</title>
+<!--
+  Style R template (90s desktop OS). Canonical look: the reference lookdev (read only); instantiate
+  with styles/R/build.py, which injects the plan (cue times and copy derived from the words) below.
+  Kept: navy dithered desktop, grey bevelled windows with navy title bars, taskbar with the Keller
+  Menu button and a clock, outline zoom on window open, stepped eases, cursor presses and hourglass,
+  and the five window gags (brief, scanner, MODEL_A/MODEL_B review stamp, error cascade into
+  <WORD>.DLL, dial-up CONNECTED hero).
+  Fixed against the preflight:
+  * small type: every text run is at least 46 px (canonical chrome was 26-42 px: title bars 36,
+    window buttons 30, menus 32, status 30, taskbar 26-30, path/dial lines 42); nowrap lines shrink
+    to fit with a floor of 46 px and build.py caps their length so the floor is not reached.
+  * dead frames: a slow camera push on the desktop and a seeded CRT grain jittered at 15 fps over
+    everything (end card included); the end card logo and name push slowly through the hold.
+  * end card: the shared kit/endcard.js cuts in 0.1 s after the last word and holds 2 s (the
+    canonical padded the narration and held 1.85 s on its own card); the taskbar stays on top.
+  * empty lower frame: windows run down to y 1540-1770 and carry a status bar; the scene-3 windows
+    open before the earlier ones minimise, so the band is never left to the taskbar alone.
+  * loudness: one bus from kit/sfx_bus.py (voice_norm.wav + sfx_bus.wav).
+  Fonts (D4): the canonical's macOS faces (Geneva, Tahoma Bold, Arial Black, Comic Sans MS Bold,
+  Monaco) are swapped for the bundled OFL faces: Lilita One (title bars, buttons, display), Comic
+  Shanns (UI text and the monospace memo/path/dial lines), Virgil (the deliberately sloppy lines).
+-->
+<script src="kit/gsap.min.js"></script>
+<script src="kit/endcard.js"></script>
+<style>
+@font-face { font-family: "KS Lilita"; font-weight: 400 900; src: url("assets/fonts/LilitaOne.woff2") format("woff2"); }
+@font-face { font-family: "KR Shanns"; font-weight: 400 900; src: url("assets/fonts/ComicShanns.woff2") format("woff2"); }
+@font-face { font-family: "KR Slop"; font-weight: 400 900; src: url("assets/fonts/Virgil.woff2") format("woff2"); }
+:root { --navy:#10243E; --navy2:#0F1B2D; --cream:#FBF7F0; --face:#c4c6c9; --sh:#7d8086; --red:#d62020; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:1080px; height:1920px; overflow:hidden; background:var(--navy); }
+#root { position:relative; width:1080px; height:1920px; overflow:hidden; font-family:"KR Shanns", monospace; color:#111; background:var(--navy); }
+#cam { position:absolute; left:0; top:0; width:1080px; height:1920px; transform-origin:50% 45%; }
+.desk { position:absolute; inset:0; background: radial-gradient(90% 60% at 50% 40%, #18345a 0%, #10243E 60%, #0b1a2e 100%); }
+.dither { position:absolute; inset:0; opacity:.10; background-image: repeating-conic-gradient(#000 0 25%, transparent 0 50%); background-size:4px 4px; }
+.scan { position:absolute; inset:0; pointer-events:none; opacity:.07; z-index:9003; background: repeating-linear-gradient(0deg, #000 0 2px, transparent 2px 4px); }
+.vig { position:absolute; inset:0; z-index:9004; pointer-events:none; background: radial-gradient(120% 90% at 50% 50%, transparent 60%, rgba(0,0,0,.45) 100%); }
+#grain { position:absolute; inset:-60px; pointer-events:none; z-index:9002; opacity:.16; mix-blend-mode:overlay; }
+/* windows */
+.win { position:absolute; background:var(--face); border:4px solid; border-color:#fff #111 #111 #fff;
+  box-shadow: inset -4px -4px var(--sh), inset 4px 4px #e6e7e9, 14px 16px 0 rgba(0,0,0,.4); padding:8px; visibility:hidden; }
+.tbar { height:76px; display:flex; align-items:center; padding:0 10px 0 18px; color:#fff; font-family:"KS Lilita"; font-size:46px;
+  background: linear-gradient(90deg, #0F1B2D, #2b5288); }
+.win.off .tbar { background: linear-gradient(90deg, #6f737a, #a7abb1); color:#e4e5e7; }
+.tbar .tt { flex:1; white-space:nowrap; overflow:hidden; }
+.tbtn { width:60px; height:56px; margin-left:6px; background:var(--face); border:3px solid; border-color:#fff #111 #111 #fff;
+  box-shadow: inset -3px -3px var(--sh); color:#111; font-size:46px; line-height:48px; text-align:center; font-family:"KS Lilita"; }
+.menu { height:64px; display:flex; gap:40px; align-items:center; padding:0 14px; font-size:46px; }
+.sunk { background:#fff; border:4px solid; border-color:var(--sh) #fff #fff var(--sh); box-shadow: inset 3px 3px #111; }
+.btn { display:inline-block; min-width:220px; padding:10px 24px; text-align:center; font-family:"KS Lilita"; font-size:46px; background:var(--face);
+  border:4px solid; border-color:#fff #111 #111 #fff; box-shadow: inset -4px -4px var(--sh), inset 4px 4px #e6e7e9; }
+.btn.def { outline:4px solid #111; }
+.btn.down { border-color:#111 #fff #fff #111; box-shadow: inset 4px 4px var(--sh); }
+.prog { height:70px; padding:7px; }
+.prog .fill { height:100%; width:0%; background: repeating-linear-gradient(90deg, #10243E 0 34px, transparent 34px 41px); }
+.status { height:70px; display:flex; gap:8px; font-size:46px; }
+.status > div { flex:1; padding:4px 12px; white-space:nowrap; overflow:hidden; border:3px solid; border-color:var(--sh) #fff #fff var(--sh); }
+.bot { position:absolute; left:8px; right:8px; bottom:8px; }
+[data-fit] { white-space:nowrap; }
+/* brief */
+#w1 { left:55px; top:300px; width:970px; height:1250px; }
+#w1 .page { margin-top:6px; height:990px; padding:34px 40px; overflow:hidden; }
+.meta { font-size:52px; color:#333; line-height:1.5; }
+.meta div { height:78px; overflow:hidden; }
+.big { font-family:"KS Lilita"; font-size:150px; line-height:1.05; color:var(--navy); margin-top:30px; position:relative; }
+.big > div { position:relative; }
+.ch { display:inline-block; opacity:0; white-space:pre; }
+.caret { display:inline-block; width:14px; height:124px; background:#111; vertical-align:-8px; margin-left:4px; }
+.hl { position:absolute; left:0; bottom:-6px; height:16px; width:0; background:#e8c35a; z-index:-1; }
+/* scanner */
+#w2 { left:55px; top:420px; width:970px; height:1120px; }
+#w2 .body { padding:34px 30px 0; font-size:46px; }
+.res { display:flex; gap:26px; align-items:center; margin-top:56px; opacity:0; }
+.warn { width:120px; height:106px; background:#f3c20a; clip-path: polygon(50% 0,100% 100%,0 100%); position:relative; flex:none; }
+.warn::after { content:"!"; position:absolute; left:0; right:0; top:28px; text-align:center; font-family:"KS Lilita"; font-size:64px; color:#111; }
+.res b { font-family:"KS Lilita"; font-weight:400; font-size:66px; line-height:1.08; display:block; }
+.res .sev { font-size:50px; color:#b01010; font-family:"KS Lilita"; display:block; margin-top:8px; }
+.loc { font-size:48px; margin-top:56px; opacity:0; color:#222; }
+/* models */
+#w3 { left:55px; top:110px; width:930px; height:760px; }
+#w4 { left:95px; top:850px; width:930px; height:920px; }
+.mbody { padding:18px; }
+.mhead { font-family:"KS Lilita"; font-size:50px; line-height:1.12; margin-bottom:14px; height:112px; overflow:hidden; }
+.slop { font-family:"KR Slop"; line-height:1.28; padding:20px 26px; height:610px; overflow:hidden; }
+.slop div { opacity:0; }
+.s1 { color:#e0108c; transform:rotate(-3deg); font-size:76px; }
+.s2 { color:#11a10f; transform:rotate(2deg); font-size:66px; }
+.s3 { color:#f06a00; transform:rotate(-1.5deg); font-size:76px; }
+.s4 { color:#2a3cff; transform:rotate(3deg); margin-left:20px; font-size:66px; }
+.chk { font-size:46px; white-space:nowrap; overflow:hidden; }
+.stamp { position:absolute; left:20px; top:470px; font-family:"KR Slop"; font-size:84px; color:#07a81e; transform:rotate(-8deg);
+  border:10px solid #07a81e; padding:6px 28px; border-radius:26px; background:rgba(255,255,255,.92); opacity:0; white-space:nowrap;
+  text-shadow: 4px 4px 0 #ffe600; z-index:5; }
+/* errors */
+.err { width:970px; }
+.err .ebody { display:flex; gap:30px; padding:36px 30px 14px; }
+#e1 .ebody { height:420px; overflow:hidden; }
+.xicon { width:120px; height:120px; border-radius:50%; background:var(--red); border:5px solid #111; flex:none; position:relative; }
+.xicon::before, .xicon::after { content:""; position:absolute; left:47px; top:17px; width:16px; height:76px; background:#fff; transform:rotate(45deg); }
+.xicon::after { transform:rotate(-45deg); }
+.emsg { font-size:46px; line-height:1.25; min-width:0; }
+.emsg b { font-family:"KS Lilita"; font-weight:400; font-size:72px; display:block; margin-bottom:10px; line-height:1.05; }
+.emsg .why { opacity:0; color:#222; font-size:46px; margin-top:12px; font-family:"KS Lilita"; }
+.ebtns { display:flex; gap:30px; justify-content:center; padding:16px 0 12px; }
+#e1 { left:55px; top:820px; }
+.cp { width:760px; }
+.cp .ebody { padding:24px 24px 6px; gap:24px; }
+.cp .xicon { width:96px; height:96px; }
+.cp .xicon::before, .cp .xicon::after { left:35px; top:12px; width:14px; height:62px; }
+.cp .emsg b { font-size:60px; margin:0; }
+.cp .emsg { padding-top:16px; }
+.cp .ebtns { padding:8px 0 6px; }
+#e4 { left:20px; top:600px; width:1040px; z-index:40; }
+#e4 .emsg b { font-size:62px; }
+.dll { color:var(--red); font-size:78px; display:block; line-height:1.15; }
+#dim { position:absolute; inset:0; background:rgba(5,10,20,.62); z-index:35; opacity:0; }
+#flash { position:absolute; inset:0; background:#fff; z-index:85; opacity:0; }
+/* dial-up */
+#w6 { left:40px; top:300px; width:1000px; height:1240px; }
+.dial { display:flex; gap:30px; padding:34px 30px 20px; align-items:center; }
+.pw { width:200px; height:200px; flex:none; }
+.phone { width:120px; height:120px; position:relative; zoom:1.66; }
+.phone .hs { position:absolute; left:6px; top:12px; width:108px; height:34px; background:#222; border-radius:18px 18px 6px 6px; }
+.phone .bs { position:absolute; left:16px; top:52px; width:88px; height:60px; background:#c9a24a; border:3px solid #111; border-radius:6px;
+  background-image: radial-gradient(circle, #111 3px, transparent 4px); background-size:22px 18px; }
+.dl { font-size:48px; line-height:1.4; min-width:0; flex:1; }
+.dl > div { opacity:0; }
+.hero { margin:26px 30px 0; height:540px; background:#0a7d1c; border:4px solid #111; color:#fff; text-align:center; opacity:0;
+  display:flex; flex-direction:column; justify-content:center; box-shadow: inset 4px 4px #111; padding:0 24px; }
+.hero .c1 { font-family:"KS Lilita"; font-size:64px; color:#ffe600; letter-spacing:4px; }
+.hero .c2 { font-family:"KS Lilita"; font-size:136px; line-height:1.0; margin-top:10px; }
+/* taskbar (outside the camera push, above the kit end card) */
+.task { position:absolute; left:0; right:0; top:1824px; height:96px; z-index:9001; background:var(--face);
+  border-top:4px solid #fff; box-shadow: inset 0 3px #e6e7e9; display:flex; align-items:center; padding:0 10px; gap:10px; }
+.kbtn { display:flex; align-items:center; gap:10px; height:74px; padding:0 14px; font-family:"KS Lilita"; font-size:46px; flex:none;
+  border:3px solid; border-color:#fff #111 #111 #fff; box-shadow: inset -2px -2px var(--sh); }
+.kbtn img { width:48px; height:48px; }
+.tb { height:74px; flex:none; padding:0 12px; align-items:center; font-family:"KS Lilita"; font-size:46px; white-space:nowrap;
+  border:3px solid; border-color:#fff #111 #111 #fff; box-shadow: inset -2px -2px var(--sh); display:none; }
+.tb.act { border-color:#111 #fff #fff #111; box-shadow: inset 2px 2px var(--sh); background: repeating-conic-gradient(#e2e3e5 0 25%, var(--face) 0 50%) 0 0/4px 4px; }
+.tray { margin-left:auto; height:74px; padding:0 14px; display:flex; align-items:center; font-size:46px; flex:none;
+  border:3px solid; border-color:var(--sh) #fff #fff var(--sh); }
+#zr { position:absolute; z-index:70; border:5px dotted #e8e8e8; visibility:hidden; }
+#cur { position:absolute; z-index:80; left:0; top:0; width:56px; height:80px; }
+#cur svg { position:absolute; left:0; top:0; }
+#hg { visibility:hidden; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-fps="30" data-duration="__R_DURATION__">
+ <div id="cam">
+  <div class="desk"></div><div class="dither"></div>
+
+  <!-- brief (already open at frame 0) -->
+  <div class="win" id="w1" style="visibility:visible">
+    <div class="tbar"><span class="tt">BRIEF.TXT - Reader</span><span class="tbtn">_</span><span class="tbtn">&#9633;</span><span class="tbtn">&times;</span></div>
+    <div class="menu"><span>File</span><span>Edit</span><span>Search</span><span>Help</span></div>
+    <div class="page sunk">
+      <div class="meta"><div id="m0" data-fit data-min="46"></div><div id="m1" data-fit data-min="46"></div><div id="m2" data-fit data-min="46"></div><div id="m3" data-fit data-min="46"></div></div>
+      <div class="big" id="ttl"><div class="hl" id="hl"></div></div>
+    </div>
+    <div class="status bot"><div id="ln">Ln 1, Col 1</div><div style="flex:.7">BRIEF.TXT</div></div>
+  </div>
+
+  <!-- scanner -->
+  <div class="win" id="w2">
+    <div class="tbar"><span class="tt" id="w2t"></span><span class="tbtn">_</span><span class="tbtn">&times;</span></div>
+    <div class="body">
+      <div id="scanlab" data-fit data-min="46"></div>
+      <div class="prog sunk" style="margin-top:20px"><div class="fill" id="pf1"></div></div>
+      <div class="res" id="res1"><div class="warn"></div><div style="min-width:0"><b id="resb"></b><span class="sev" id="sev"></span></div></div>
+      <div class="loc" id="loc1" data-fit data-min="46"></div>
+    </div>
+    <div class="status bot"><div id="st1">Scanning...</div><div style="flex:.6">Objects: all</div></div>
+  </div>
+
+  <!-- model A -->
+  <div class="win" id="w3">
+    <div class="tbar"><span class="tt">MODEL_A.EXE - Answers</span><span class="tbtn">_</span><span class="tbtn">&times;</span></div>
+    <div class="mbody">
+      <div class="slop sunk">
+        <div class="s1" id="sl0" data-fit data-min="52"></div>
+        <div class="s2" id="sl1" data-fit data-min="52"></div>
+        <div class="s3" id="sl2" data-fit data-min="52"></div>
+        <div class="s4" id="sl3" data-fit data-min="52"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- model B -->
+  <div class="win" id="w4">
+    <div class="tbar"><span class="tt">MODEL_B.EXE - Reviewer</span><span class="tbtn">_</span><span class="tbtn">&times;</span></div>
+    <div class="mbody">
+      <div class="mhead" id="mhead"></div>
+      <div class="chk" id="chklab">Ready.</div>
+      <div class="prog sunk" style="margin-top:14px"><div class="fill" id="pf2"></div></div>
+      <div style="margin-top:30px; display:flex; gap:24px">
+        <span class="btn def" id="bcheck">Check</span><span class="btn">Cancel</span>
+      </div>
+    </div>
+    <div class="status bot"><div id="st2">0 issues</div><div>MODEL_A</div></div>
+    <div class="stamp" id="stamp"></div>
+  </div>
+
+  <!-- errors -->
+  <div class="win err" id="e1">
+    <div class="tbar"><span class="tt">MODEL_B.EXE</span><span class="tbtn">&times;</span></div>
+    <div class="ebody"><div class="xicon"></div><div class="emsg"><b id="e1b"></b><span id="e1m"></span><div class="why" id="why1"></div></div></div>
+    <div class="ebtns"><span class="btn def" id="ok1">OK</span><span class="btn">Cancel</span></div>
+  </div>
+  <div id="cps"></div>
+  <div id="dim"></div>
+  <div class="win err" id="e4">
+    <div class="tbar"><span class="tt">SYSTEM ERROR</span><span class="tbtn">&times;</span></div>
+    <div class="ebody"><div class="xicon"></div><div class="emsg"><b>Required file not found:</b><span class="dll" id="dll" data-fit data-min="56"></span><div style="margin-top:14px" id="e4m"></div></div></div>
+    <div class="ebtns"><span class="btn def">OK</span></div>
+  </div>
+
+  <!-- dial-up -->
+  <div class="win" id="w6">
+    <div class="tbar"><span class="tt" id="w6t"></span><span class="tbtn">&times;</span></div>
+    <div class="dial">
+      <div class="pw"><div class="phone"><div class="hs"></div><div class="bs"></div></div></div>
+      <div class="dl">
+        <div id="d1" data-fit data-min="46"></div>
+        <div id="d2"></div>
+      </div>
+    </div>
+    <div style="padding:0 30px"><div class="prog sunk"><div class="fill" id="pf3"></div></div></div>
+    <div class="hero" id="hero"><div class="c1" id="h1"></div><div class="c2" id="h2"></div></div>
+    <div class="ebtns" style="padding-top:22px"><span class="btn">Cancel</span></div>
+  </div>
+
+  <div id="flash"></div>
+  <div id="zr"></div>
+  <div id="cur">
+    <svg id="arrow" width="56" height="80" viewBox="0 0 11 16" shape-rendering="crispEdges"><path d="M0 0v14l3.5-3.5 2.5 5.5 2-1-2.5-5h5z" fill="#fff" stroke="#000" stroke-width="1"/></svg>
+    <svg id="hg" width="48" height="72" viewBox="0 0 10 15" shape-rendering="crispEdges"><path d="M0 0h10v2h-1v3l-3 2.5 3 2.5v3h1v2H0v-2h1v-3l3-2.5-3-2.5V2H0z" fill="#fff" stroke="#000" stroke-width=".8"/><path d="M2.5 3.5h5L5 6.5z M2.5 12.5h5L5 10z" fill="#c8a040"/></svg>
+  </div>
+ </div>
+
+  <div class="task" id="task">
+    <div class="kbtn"><img src="assets/brand/keller-ai-logo.svg" alt=""/><span id="menu"></span></div>
+    <div class="tb" id="tb1">BRIEF</div><div class="tb" id="tb2">SCAN</div><div class="tb" id="tb3">A.EXE</div><div class="tb" id="tb4">B.EXE</div>
+    <div class="tray" id="clock">0:00</div>
+  </div>
+  <div id="grain"></div>
+  <div class="scan"></div><div class="vig"></div>
+
+  <audio id="vo" src="assets/voice_norm.wav" data-start="0" data-duration="__R_VO_DURATION__" data-volume="1"></audio>
+  <audio id="sfx" src="assets/sfx_bus.wav" data-start="0" data-duration="__R_DURATION__" data-volume="1"></audio>
+</div>
+
+<script>
+window.__R = /*__R_DATA__*/null;
+(function () {
+  window.__timelines = window.__timelines || {};
+  var D = window.__R, FPS = 30, END = D.duration;
+  var $ = function (s) { return document.querySelector(s); };
+  var root = document.getElementById("root");
+  var CP = [[150,560],[40,300],[300,860],[10,1120],[290,150],[170,1340],[30,640],[310,1020],[90,40],[250,1480],[0,880],[200,420],[320,1250],[60,1560]];
+  var c = D.cuts, s1 = D.s1, s2 = D.s2, s3 = D.s3, s4 = D.s4, s5 = D.s5;
+
+  // ---- copy from the plan
+  function txt(sel, v) { $(sel).textContent = v; }
+  txt("#menu", D.menu);
+  txt("#w2t", s2.win); txt("#scanlab", s2.scan); txt("#resb", s2.result); txt("#sev", s2.severity); txt("#loc1", s2.loc);
+  s3.slop.forEach(function (v, i) { txt("#sl" + i, v); });
+  txt("#mhead", s3.head); txt("#stamp", s3.stamp);
+  txt("#e1b", s4.error); txt("#e1m", s4.errorMsg); txt("#why1", s4.why); txt("#dll", s4.dll); txt("#e4m", s4.msg);
+  txt("#w6t", s5.win); txt("#d1", s5.d1); txt("#d2", s5.d2); txt("#h1", s5.heroHead);
+  s5.hero.forEach(function (v) { var d = document.createElement("div"); d.textContent = v; d.setAttribute("data-fit", ""); d.setAttribute("data-min", "72"); $("#h2").appendChild(d); });
+  var ttl = $("#ttl");
+  s1.title.forEach(function (ln, i) { var d = document.createElement("div"); d.id = "bw" + i; d.setAttribute("data-fit", ""); d.setAttribute("data-min", "64"); ttl.appendChild(d); });
+  CP.slice(0, s4.copies.length).forEach(function (p, i) {
+    var d = document.createElement("div"); d.className = "win err cp"; d.id = "cp" + i;
+    d.style.left = p[0] + "px"; d.style.top = p[1] + "px";
+    d.innerHTML = '<div class="tbar"><span class="tt">MODEL_B.EXE</span><span class="tbtn">&times;</span></div><div class="ebody"><div class="xicon"></div><div class="emsg"><b></b></div></div><div class="ebtns"><span class="btn def">OK</span></div>';
+    d.querySelector("b").textContent = s4.error;
+    $("#cps").appendChild(d);
+  });
+
+  // ---- seeded CRT grain tile
+  (function () {
+    var cv = document.createElement("canvas"); cv.width = cv.height = 200; var g = cv.getContext("2d"), im = g.createImageData(200, 200), s = 49;
+    for (var i = 0; i < im.data.length; i += 4) { s = (s * 1103515245 + 12345) % 2147483648; var v = (s / 2147483648) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+    g.putImageData(im, 0, 0); $("#grain").style.backgroundImage = "url(" + cv.toDataURL() + ")";
+  })();
+
+  var tl = gsap.timeline({ paused: true });
+  function rect(el) { return { l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }; }
+  function camPos(el) { var x = 0, y = 0, cam = $("#cam"); while (el && el !== cam) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return { x: x, y: y }; }
+  function openWin(id, t, src) {
+    var w = $(id), r = rect(w);
+    tl.set("#zr", { visibility: "visible", left: src.l, top: src.t, width: src.w, height: src.h }, t);
+    tl.to("#zr", { left: r.l, top: r.t, width: r.w, height: r.h, duration: 0.2, ease: "steps(5)" }, t);
+    tl.set("#zr", { visibility: "hidden" }, t + 0.2);
+    tl.set(w, { visibility: "visible" }, t + 0.2);
+    tl.fromTo(w, { scale: 0.98 }, { scale: 1, duration: 0.2, ease: "steps(4)", immediateRender: false }, t + 0.2);
+  }
+  function minWin(id, t, tbx) {
+    var w = $(id), r = rect(w);
+    tl.set(w, { visibility: "hidden" }, t);
+    tl.set("#zr", { visibility: "visible", left: r.l, top: r.t, width: r.w, height: r.h }, t);
+    tl.to("#zr", { left: tbx, top: 1840, width: 130, height: 62, duration: 0.18, ease: "steps(5)" }, t);
+    tl.set("#zr", { visibility: "hidden" }, t + 0.18);
+  }
+  function off(id, t) { tl.set(id, { className: $(id).className + " off" }, t); }
+  function curTo(x, y, t, d) { tl.to("#cur", { x: x, y: y, duration: d, ease: "power2.inOut" }, t); }
+  function busy(t0, t1) { tl.set("#arrow", { visibility: "hidden" }, t0); tl.set("#hg", { visibility: "visible" }, t0);
+    tl.set("#arrow", { visibility: "visible" }, t1); tl.set("#hg", { visibility: "hidden" }, t1); }
+  function press(sel, t) { tl.set(sel, { className: "btn def down" }, t); tl.set(sel, { className: "btn def" }, t + 0.12); }
+  function tbOn(sel, t) { tl.set(sel, { display: "flex" }, t); }
+  function tbAct(sel, t) { tl.set(".tb", { className: "tb" }, t); tl.set(sel, { className: "tb act" }, t + 0.001); }
+  function pop(sel, t, s, d) { tl.fromTo(sel, { scale: s || 1.12 }, { scale: 1, duration: d || 0.2, ease: "steps(4)", transformOrigin: "50% 50%", immediateRender: false }, t); }
+  function shake(sel, t, amp, n) { tl.fromTo(sel, { x: -amp }, { x: amp, duration: 0.035, yoyo: true, repeat: n, ease: "none", immediateRender: false }, t); tl.set(sel, { x: 0 }, t + 0.035 * (n + 1)); }
+  function flash(t) { tl.set("#flash", { opacity: 0.85 }, t); tl.set("#flash", { opacity: 0 }, t + 0.07); }
+  function typeInto(sel, word, t0, t1) {
+    var el = $(sel); word.split("").forEach(function (ch) { var s = document.createElement("span"); s.className = "ch"; s.textContent = ch; el.appendChild(s); });
+    var chs = el.querySelectorAll(".ch"), step = (t1 - t0) / Math.max(1, chs.length);
+    chs.forEach(function (ch, i) { tl.set(ch, { opacity: 1 }, t0 + i * step); });
+  }
+
+  // ---- scene 1: the brief is open at frame 0 and types the memo, then the title on its words
+  tl.set("#cur", { x: 930, y: 1440 }, 0);
+  curTo(975, 1480, 0.1, Math.max(0.5, c[1] - 0.3));
+  tbOn("#tb1", 0); tbAct("#tb1", 0);
+  pop("#w1", 0, 1.04, 0.24);
+  s1.meta.forEach(function (m, i) { typeInto("#m" + i, m.text, m.t0, m.t1); });
+  s1.title.forEach(function (ln, i) { typeInto("#bw" + i, ln.text, ln.t0, ln.t1); });
+  var caret = document.createElement("span"); caret.className = "caret"; caret.id = "caret"; $("#bw" + (s1.title.length - 1)).appendChild(caret);
+  for (var k = 0; 0.05 + k * 0.25 < s1.hlT; k++) tl.set("#caret", { opacity: k % 2 ? 1 : 0 }, 0.05 + k * 0.25);
+  tl.set("#caret", { opacity: 0 }, s1.hlT);
+  tl.to("#hl", { width: "100%", duration: 0.2, ease: "steps(5)" }, s1.hlT);
+  pop("#ttl", s1.hlT, 1.07, 0.2);
+  var nchars = s1.title.reduce(function (a, l) { return a + l.text.length; }, 0);
+  tl.set("#ln", { textContent: "Ln " + (4 + s1.title.length) + ", Col " + (nchars + 1) }, s1.hlT);
+
+  // ---- scene 2: scanner
+  off("#w1", c[1]);
+  openWin("#w2", c[1], { l: 480, t: 1840, w: 120, h: 60 });
+  tbOn("#tb2", c[1] + 0.2); tbAct("#tb2", c[1] + 0.2);
+  curTo(975, 1440, c[1] + 0.1, 0.5);
+  busy(s2.progT, s2.resT);
+  tl.to("#pf1", { width: "100%", duration: s2.resT - s2.progT, ease: "steps(12)" }, s2.progT);
+  tl.set("#scanlab", { textContent: "Scan complete." }, s2.resT);
+  tl.set("#st1", { textContent: "Done." }, s2.resT);
+  tl.set("#res1", { opacity: 1 }, s2.resT);
+  pop("#res1", s2.resT, 1.18, 0.24);
+  tl.set("#loc1", { opacity: 1 }, s2.locT);
+  pop("#loc1", s2.locT, 1.06, 0.15);
+
+  // ---- scene 3: one model checks another (new windows open before the old ones minimise)
+  openWin("#w3", c[2], { l: 60, t: 250, w: 110, h: 110 });
+  tbOn("#tb3", c[2] + 0.2); tbAct("#tb3", c[2] + 0.2);
+  tl.to("#w3 .slop div", { opacity: 1, duration: 0.01, stagger: 0.12 }, s3.slopT);
+  openWin("#w4", c[2] + 0.2, { l: 60, t: 250, w: 110, h: 110 });
+  off("#w3", c[2] + 0.4);
+  minWin("#w1", c[2] + 0.4, 190); minWin("#w2", c[2] + 0.46, 330);
+  tbOn("#tb4", c[2] + 0.4); tbAct("#tb4", c[2] + 0.4);
+  var bc = camPos($("#bcheck")), bcr = $("#bcheck");
+  curTo(bc.x + bcr.offsetWidth * 0.5, bc.y + bcr.offsetHeight * 0.4, Math.max(c[2] + 0.45, s3.pressT - 0.5), 0.45);
+  press("#bcheck", s3.pressT);
+  tl.set("#chklab", { textContent: s3.checking }, s3.pressT + 0.05);
+  curTo(975, 1600, s3.pressT + 0.2, 0.3);
+  busy(s3.pressT + 0.1, s3.stampT - 0.02);
+  tl.to("#pf2", { width: "100%", duration: Math.max(0.1, s3.stampT - 0.1 - (s3.pressT + 0.18)), ease: "steps(14)" }, s3.pressT + 0.18);
+  tl.set("#chklab", { textContent: s3.done }, s3.stampT - 0.02);
+  tl.fromTo("#stamp", { opacity: 0, scale: 2.0 }, { opacity: 1, scale: 1, duration: 0.18, ease: "power3.in", immediateRender: false }, s3.stampT);
+  shake("#w4", s3.stampT + 0.18, 8, 5);
+  flash(s3.stampT + 0.18);
+
+  // ---- scene 4: the error, the OK that spawns copies, then <WORD>.DLL on the slam word
+  off("#w4", c[3]);
+  tl.set("#e1", { visibility: "visible" }, c[3]);
+  pop("#e1", c[3], 1.12, 0.2);
+  tl.set("#why1", { opacity: 1 }, s4.whyT);
+  pop("#why1", s4.whyT, 1.08, 0.15);
+  var ob = camPos($("#ok1")), obr = $("#ok1");
+  curTo(ob.x + obr.offsetWidth * 0.5, ob.y + obr.offsetHeight * 0.4, s4.whyT - 0.1, Math.max(0.2, s4.pressT - s4.whyT));
+  press("#ok1", s4.pressT);
+  curTo(975, 1700, s4.pressT + 0.15, 0.3);
+  busy(s4.pressT + 0.3, c[4] - 0.05);
+  s4.copies.forEach(function (t, i) { tl.set("#cp" + i, { visibility: "visible" }, t); pop("#cp" + i, t, 1.1, 0.12); });
+  if (s4.copies.length) off("#e1", s4.copies[0]);
+  tl.set("#dim", { opacity: 1 }, s4.dllT);
+  flash(s4.dllT);
+  tl.set("#e4", { visibility: "visible" }, s4.dllT);
+  tl.fromTo("#e4", { scale: 1.22 }, { scale: 1, duration: 0.18, ease: "steps(4)", immediateRender: false }, s4.dllT);
+  shake("#e4", s4.dllT + 0.06, 16, 9);
+
+  // ---- scene 5: dial-up, CONNECTED hero (the title) on the last content word
+  tl.set(".win", { visibility: "hidden" }, c[4]);
+  tl.set("#dim", { opacity: 0 }, c[4]);
+  tl.set(".tb", { display: "none" }, c[4]);
+  tl.set("#w6", { visibility: "visible" }, c[4]);
+  pop("#w6", c[4], 1.06, 0.2);
+  tl.set("#d1", { opacity: 1 }, s5.d1T);
+  if (s5.d2) tl.set("#d2", { opacity: 1 }, s5.d2T);
+  tl.to("#pf3", { width: "100%", duration: Math.max(0.1, s5.heroT - c[4] - 0.1), ease: "steps(10)" }, c[4] + 0.1);
+  tl.set("#hero", { opacity: 1 }, s5.heroT);
+  pop("#hero", s5.heroT, 1.14, 0.22);
+  flash(s5.heroT);
+  var jig = Math.max(1, Math.floor((s5.heroT - c[4]) / 0.05) - 1);
+  tl.to(".phone", { rotation: 4, duration: 0.05, yoyo: true, repeat: jig | 1, ease: "none", transformOrigin: "50% 80%" }, c[4]);
+  curTo(975, 1600, c[4], 0.5);
+
+  // ---- end card (kit/endcard.js) by a hard cut; slow pushes keep the hold moving under the grain
+  var plan = KAEndCard.plan({ lastWordEnd: D.lastWordEnd, start: D.endcard.start, hold: D.endcard.hold, fps: FPS });
+  if (Math.abs(plan.end - END) > 0.5 / FPS) throw new Error("style R: data-duration " + END + " != end-card plan end " + plan.end);
+  var card = KAEndCard.mount({ tl: tl, root: root, start: plan.start, brand: D.brand });
+  var logo = card.querySelector(".ka-endcard-logo");
+  tl.to(logo, { scale: 1.07, duration: Math.max(0.1, END - plan.start - 0.4), ease: "none" }, plan.start + 0.4);
+  var cname = card.querySelector(".ka-endcard-name");
+  if (cname) tl.fromTo(cname, { scale: 1 }, { scale: 1.06, duration: Math.max(0.1, END - plan.start), ease: "none", immediateRender: false }, plan.start);
+  tl.set("#cur", { opacity: 0 }, plan.start);
+
+  // ---- whole-piece motion: camera push, grain jitter at 15 fps, taskbar clock
+  tl.fromTo("#cam", { scale: 1.0 }, { scale: 1.03, duration: END, ease: "none" }, 0);
+  for (var g = 0; g < END * 15; g++) tl.set("#grain", { x: ((g * 37) % 61) - 30, y: ((g * 53) % 47) - 23 }, g / 15);
+  var clk = $("#clock"), ck = { t: 0 };
+  tl.to(ck, { t: END, duration: END, ease: "none", onUpdate: function () {
+    var s = Math.floor(ck.t); clk.textContent = Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60); } }, 0);
+  tl.set({}, {}, END);
+  window.__timelines["main"] = tl;
+  window.__cues = { cuts: c, endcard: plan.start, title: s1.title, result: s2.resT, stamp: s3.stampT, dll: s4.dllT, hero: s5.heroT };
+
+  // Nowrap lines shrink to fit once the webfonts have metrics (no tween depends on the size).
+  function fitAll() {
+    document.querySelectorAll("[data-fit]").forEach(function (el) {
+      var fs = parseFloat(getComputedStyle(el).fontSize), min = parseFloat(el.getAttribute("data-min") || "46");
+      while (el.scrollWidth > el.clientWidth + 1 && fs > min) { fs -= 2; el.style.fontSize = Math.max(min, fs) + "px"; }
+    });
+  }
+  fitAll();
+  if (document.fonts && document.fonts.load) {
+    Promise.all(['46px "KS Lilita"', '46px "KR Shanns"', '46px "KR Slop"'].map(function (f) { return document.fonts.load(f); })).then(fitAll, fitAll);
+  }
+})();
+</script>
+</body>
+</html>
