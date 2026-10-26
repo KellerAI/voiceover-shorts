@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "voiceover-shorts-tts",
+  "version": "0.1.0",
+  "description": "Make a narration WAV and word timings (words.json) from text through the ElevenLabs API, using your own ElevenLabs key, for the voiceover-shorts plugin",
+  "author": {
+    "name": "KellerAI",
+    "email": "plugins@kellerai.io"
+  },
+  "homepage": "https://github.com/KellerAI/voiceover-shorts",
+  "repository": "https://github.com/KellerAI/voiceover-shorts",
+  "license": "LicenseRef-MIT-NoTraining",
+  "keywords": ["voiceover", "shorts", "text-to-speech", "tts", "elevenlabs", "narration", "word timings"],
+  "userConfig": {
+    "elevenlabs_api_key": {
+      "type": "string",
+      "title": "ElevenLabs API key",
+      "description": "Your own ElevenLabs API key. Stored in secure storage and passed only to the add-on's MCP server.",
+      "sensitive": true,
+      "required": false
+    },
+    "voice_id": {
+      "type": "string",
+      "title": "Voice ID",
+      "description": "ElevenLabs voice ID to narrate with. You are responsible for having the rights to the voice you choose."
+    },
+    "model_id": {
+      "type": "string",
+      "title": "Model ID",
+      "description": "ElevenLabs text-to-speech model ID.",
+      "default": "eleven_multilingual_v2"
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output format",
+      "description": "WAV format requested from ElevenLabs. wav_44100 may require a Pro account.",
+      "options": ["wav_24000", "wav_44100"],
+      "default": "wav_24000"
+    },
+    "max_chars_per_call": {
+      "type": "number",
+      "title": "Max characters per call",
+      "description": "Upper limit on text length sent in one paid ElevenLabs request.",
+      "default": 1500,
+      "min": 1,
+      "max": 10000
+    },
+    "api_base": {
+      "type": "string",
+      "title": "ElevenLabs API host",
+      "description": "ElevenLabs API host. Pick the one matching your account's data residency.",
+      "options": [
+        "https://api.elevenlabs.io",
+        "https://api.us.elevenlabs.io",
+        "https://api.eu.residency.elevenlabs.io",
+        "https://api.in.residency.elevenlabs.io",
+        "https://api.sg.residency.elevenlabs.io"
+      ],
+      "default": "https://api.elevenlabs.io"
+    }
+  }
+}

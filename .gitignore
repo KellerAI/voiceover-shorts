@@ -1,0 +1,11 @@
+evals/results/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tmp/
+.DS_Store
+results.json
+
+# local issue tracker (br)
+.beads/
