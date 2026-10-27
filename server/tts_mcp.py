@@ -2,7 +2,7 @@
 """tts_mcp.py - stdio MCP server for voiceover-shorts-tts (standard library only).
 
 Tools (contract: handoffs/voiceover-shorts-public/tts-addon-interface.md):
-  list_voices  free, one GET /v2/voices (scripts/el_client.py)
+  list_voices  free, GET /v2/voices once per page, at most MAX_VOICE_PAGES (scripts/el_client.py)
   estimate     free, GET /v1/models + GET /v1/user/subscription (scripts/narrate.py estimate)
   synthesize   paid, behind the scripts/narrate.py spend guard: local checks, the two free GETs,
                then exactly one POST /with-timestamps, never retried

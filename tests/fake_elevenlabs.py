@@ -4,6 +4,8 @@ Binds 127.0.0.1 on an ephemeral port and serves in a daemon thread for the life 
 context manager. Every request is counted per (method, path) and recorded with its
 lowercased headers, parsed query string and raw body. Setting `scripted_error` to
 (status, body_bytes) makes every later request get that response until it is reset to None.
+Setting `voice_pages` to {next_page_token or None: page} makes GET /v2/voices serve the page
+keyed by the request's `next_page_token` query value (None when absent); an unknown token is a 404.
 """
 
 from __future__ import annotations
@@ -60,6 +62,7 @@ class FakeElevenLabs:
         self.counts: Counter[tuple[str, str]] = Counter()
         self.requests: list[RecordedRequest] = []
         self.scripted_error: tuple[int, bytes] | None = None
+        self.voice_pages: dict[str | None, dict[str, Any]] | None = None
         self._lock = threading.Lock()
         self._server: HTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -115,8 +118,15 @@ class FakeElevenLabs:
             self.counts[(method, parts.path)] += 1
             self.requests.append(record)
             error = self.scripted_error
+            pages = self.voice_pages
         if error is not None:
             self._send(h, error[0], error[1], {})
+            return
+        if pages is not None and method == "GET" and parts.path == "/v2/voices":
+            token = record.query.get("next_page_token", [None])[0]
+            page = pages.get(token)
+            status = 200 if page is not None else 404
+            self._send(h, status, json.dumps(page if page is not None else {"detail": "bad token"}).encode("utf-8"), {})
             return
         status, payload, extra = self._route(method, parts.path)
         self._send(h, status, json.dumps(payload).encode("utf-8"), extra)

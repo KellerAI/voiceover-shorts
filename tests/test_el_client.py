@@ -152,6 +152,58 @@ def test_subscription_and_voices_paths(fake: FakeElevenLabs) -> None:
     assert all(r.headers["xi-api-key"] == KEY for r in fake.requests)
 
 
+def _voices(prefix: str, n: int) -> list[dict[str, str]]:
+    return [{"voice_id": f"{prefix}_{i}", "name": f"{prefix} {i}"} for i in range(n)]
+
+
+def test_list_voices_follows_next_page_token(fake: FakeElevenLabs) -> None:
+    page1, page2 = _voices("a", 10), _voices("b", 22)
+    fake.voice_pages = {
+        None: {"voices": page1, "has_more": True, "total_count": 32, "next_page_token": "tok2"},
+        "tok2": {"voices": page2, "has_more": False, "total_count": 32, "next_page_token": None},
+    }
+    doc = _client(fake).list_voices()
+    assert [v["voice_id"] for v in doc["voices"]] == [v["voice_id"] for v in page1 + page2]
+    assert doc["has_more"] is False
+    assert fake.counts == {("GET", "/v2/voices"): 2}
+    first, second = fake.requests
+    assert "next_page_token" not in first.query
+    assert second.query["next_page_token"] == ["tok2"]
+    assert all(r.query["page_size"] == ["100"] for r in fake.requests)
+    assert all(r.headers["xi-api-key"] == KEY for r in fake.requests)
+
+
+def test_list_voices_stops_on_repeated_token(fake: FakeElevenLabs) -> None:
+    fake.voice_pages = {
+        None: {"voices": _voices("a", 1), "has_more": True, "next_page_token": "loop"},
+        "loop": {"voices": _voices("b", 1), "has_more": True, "next_page_token": "loop"},
+    }
+    with pytest.raises(ElevenLabsError) as info:
+        _client(fake).list_voices()
+    assert "repeated" in info.value.message
+    assert fake.counts == {("GET", "/v2/voices"): 2}
+
+
+def test_list_voices_page_cap_bounds_requests(fake: FakeElevenLabs) -> None:
+    import el_client
+
+    cap = el_client.MAX_VOICE_PAGES
+    fake.voice_pages = {None: {"voices": [], "has_more": True, "next_page_token": "t1"}}
+    for i in range(1, cap + 5):
+        fake.voice_pages[f"t{i}"] = {"voices": [], "has_more": True, "next_page_token": f"t{i + 1}"}
+    with pytest.raises(ElevenLabsError) as info:
+        _client(fake).list_voices()
+    assert str(cap) in info.value.message
+    assert fake.counts == {("GET", "/v2/voices"): cap}
+
+
+def test_list_voices_has_more_without_token_is_an_error(fake: FakeElevenLabs) -> None:
+    fake.voice_pages = {None: {"voices": _voices("a", 1), "has_more": True, "next_page_token": None}}
+    with pytest.raises(ElevenLabsError):
+        _client(fake).list_voices()
+    assert fake.counts == {("GET", "/v2/voices"): 1}
+
+
 # ----------------------------------------------------------------- with-timestamps
 
 

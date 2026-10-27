@@ -444,6 +444,19 @@ def test_list_voices_shape(era: str, fake: FakeElevenLabs, data_dir: Path, run_s
     assert fake.requests[0].headers["xi-api-key"] == KEY
 
 
+def test_list_voices_returns_every_page(fake: FakeElevenLabs, data_dir: Path, run_server: Any) -> None:
+    page1 = [{"voice_id": f"a{i}", "name": f"A {i}", "category": "premade"} for i in range(10)]
+    page2 = [{"voice_id": f"b{i}", "name": f"B {i}", "category": "cloned"} for i in range(22)]
+    fake.voice_pages = {
+        None: {"voices": page1, "has_more": True, "total_count": 32, "next_page_token": "tok2"},
+        "tok2": {"voices": page2, "has_more": False, "total_count": 32, "next_page_token": None},
+    }
+    proc = run_server(server_env(fake, data_dir))
+    payload = ok_payload(call(proc, "list_voices", {}, "modern"))
+    assert payload == {"voices": page1 + page2}
+    assert fake.counts == {("GET", "/v2/voices"): 2}
+
+
 def test_estimate_shape_and_two_free_gets(fake: FakeElevenLabs, data_dir: Path, run_server: Any) -> None:
     proc = run_server(server_env(fake, data_dir))
     payload = ok_payload(call(proc, "estimate", {"text": "Hello there."}))

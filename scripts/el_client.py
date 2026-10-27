@@ -12,13 +12,16 @@ API facts used here, checked against the docs on 2026-10-26:
   every request sends the key in an `xi-api-key` header.
 - GET /v1/models (https://elevenlabs.io/docs/api-reference/models/list),
   GET /v1/user/subscription (https://elevenlabs.io/docs/api-reference/user/subscription/get),
-  GET /v2/voices (https://elevenlabs.io/docs/api-reference/voices/search).
+  GET /v2/voices (https://elevenlabs.io/docs/api-reference/voices/search, checked
+  2026-10-27): query `page_size` (default 10, at most 100) and `next_page_token`; the
+  response has `voices`, `has_more` and a nullable `next_page_token`.
 
 UNVERIFIED: the convert-with-timestamps page does not mention a `request-id` response
 header. It is captured when present, as the add-on spec asks, and is None otherwise.
 
-Each method makes exactly one request, with no retries. Every ElevenLabsError message
-has the API key replaced by "***".
+Each method makes exactly one request, with no retries, except list_voices, which makes
+one GET per page (at most MAX_VOICE_PAGES). Every ElevenLabsError message has the API key
+replaced by "***".
 """
 
 from __future__ import annotations
@@ -48,6 +51,8 @@ LOOPBACK_BASE_RE = re.compile(r"^http://127\.0\.0\.1:\d{1,5}$")
 DEFAULT_TIMEOUT_S = 120.0
 MAX_ERROR_BODY_CHARS = 500
 REDACTED = "***"
+VOICE_PAGE_SIZE = 100  # GET /v2/voices page_size: default 10, "Can not exceed 100" (voices/search docs)
+MAX_VOICE_PAGES = 50  # bound on list_voices requests, so a looping next_page_token cannot run forever
 
 # transport(method, url, headers, body) -> (status, response headers, response body)
 Transport = Callable[[str, str, Mapping[str, str], bytes | None], tuple[int, Mapping[str, str], bytes]]
@@ -131,7 +136,38 @@ class ElevenLabsClient:
         return self._get_json("/v1/user/subscription")
 
     def list_voices(self) -> Any:
-        return self._get_json("/v2/voices")
+        """Every voice on the account, following `next_page_token` while `has_more` is true.
+
+        Returns the last page's document with `voices` replaced by the voices of all pages.
+        A first page that is not a {"voices": [...]} object is returned unchanged. Raises
+        ElevenLabsError rather than return a silently truncated list: on a later malformed
+        page, on `has_more` with no token, on a repeated token, and after MAX_VOICE_PAGES.
+        """
+        path = "/v2/voices"
+        voices: list[Any] = []
+        seen: set[str] = set()
+        token: str | None = None
+        for page_no in range(1, MAX_VOICE_PAGES + 1):
+            query = {"page_size": str(VOICE_PAGE_SIZE)}
+            if token is not None:
+                query["next_page_token"] = token
+            status, _, data = self._request("GET", path, query=query)
+            doc = self._decode_json("GET", path, status, data)
+            page = doc.get("voices") if isinstance(doc, dict) else None
+            if not isinstance(page, list):
+                if page_no == 1:
+                    return doc
+                raise ElevenLabsError(status, f"GET {path}: page {page_no} has no voices list")
+            voices.extend(page)
+            if doc.get("has_more") is not True:
+                return {**doc, "voices": voices}
+            token = doc.get("next_page_token")
+            if not isinstance(token, str) or not token:
+                raise ElevenLabsError(status, f"GET {path}: has_more is true but page {page_no} has no next_page_token")
+            if token in seen:
+                raise ElevenLabsError(status, f"GET {path}: page {page_no} repeated an earlier next_page_token")
+            seen.add(token)
+        raise ElevenLabsError(None, f"GET {path}: still has_more after {MAX_VOICE_PAGES} pages; stopped")
 
     def tts_with_timestamps(self, voice_id: str, text: str, model_id: str, output_format: str) -> TimestampedSpeech:
         if not voice_id:
