@@ -26,8 +26,11 @@ LISTING_DIR = ".claude-plugin"
 # Matches the link by host+path, with or without http(s):// and www., case-insensitive host.
 # Regex-escaped copies (`try\.elevenlabs\.io`) in eval graders are not literal links and do not match.
 AFFILIATE_RE = re.compile(
-    r"(?<![\w.\\/-])(?i:(?:https?://)?(?:www\.)?try\.elevenlabs\.io)/vbrajywhn5js(?![\w-])"
+    r"(?<![\w.\\/-])(?i:(?:https?://)?(?:www\.)?try\.elevenlabs\.io/vbrajywhn5js)(?![\w-])"
 )
+# A link must end cleanly: end of line, whitespace, or one of these. Anything else (notably `\`)
+# can be swallowed into the href by a linkify renderer.
+CLEAN_LINK_END = frozenset(">)`\"'")
 
 
 def frontmatter_line_count(lines: list[str]) -> int:
@@ -48,9 +51,16 @@ def check_text(rel: str, text: str) -> list[str]:
     in_listing_dir = LISTING_DIR in rel_parts
     fm_end = frontmatter_line_count(lines) if Path(rel).name == "SKILL.md" else 0
     for i, line in enumerate(lines):
-        if not AFFILIATE_RE.search(line):
+        matches = list(AFFILIATE_RE.finditer(line))
+        if not matches:
             continue
         lineno = i + 1
+        for m in matches:
+            after = line[m.end() : m.end() + 1]
+            if after and not after.isspace() and after not in CLEAN_LINK_END:
+                violations.append(
+                    f"{rel}:{lineno}: affiliate link is glued to {after!r}; wrap it as <URL>"
+                )
         if in_listing_dir:
             violations.append(
                 f"{rel}:{lineno}: affiliate link in store-listing metadata ({LISTING_DIR}/)"
@@ -217,6 +227,25 @@ def test_planted_link_in_skill_frontmatter_is_flagged(tmp_path: Path) -> None:
     assert find_violations([f], tmp_path) == [
         "skills/x/SKILL.md:3: affiliate link in SKILL.md frontmatter (listing field)"
     ]
+
+
+def test_planted_link_glued_to_backslash_is_flagged(tmp_path: Path) -> None:
+    f = write(tmp_path, "README.md", f"- Affiliate link: {AFFILIATE_URL}\\\n  {DISCLOSURE}\n")
+    assert find_violations([f], tmp_path) == [
+        "README.md:1: affiliate link is glued to '\\\\'; wrap it as <URL>"
+    ]
+
+
+def test_planted_uppercase_path_link_is_matched(tmp_path: Path) -> None:
+    f = write(tmp_path, "docs/h.md", "Sign up: try.elevenlabs.io/VBRAJYWHN5JS\nOk.\n")
+    assert find_violations([f], tmp_path) == [
+        "docs/h.md:1: affiliate link not followed on the next line by the disclosure"
+    ]
+
+
+def test_planted_autolink_with_trailing_backslash_passes(tmp_path: Path) -> None:
+    f = write(tmp_path, "README.md", f"- Affiliate link: <{AFFILIATE_URL}>\\\n  {DISCLOSURE}\n")
+    assert find_violations([f], tmp_path) == []
 
 
 def test_planted_correct_placement_passes(tmp_path: Path) -> None:
