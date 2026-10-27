@@ -34,7 +34,7 @@ The `tts-setup` skill walks you through creating an API key and entering it as t
 
 You need an ElevenLabs account. Either link below works.
 
-- Affiliate link: https://try.elevenlabs.io/vbrajywhn5js\
+- Affiliate link: <https://try.elevenlabs.io/vbrajywhn5js>\
   Paid link: KellerAI is an independent affiliate of ElevenLabs and may earn a commission.
 - Direct sign-up: https://elevenlabs.io/app/sign-up
 
