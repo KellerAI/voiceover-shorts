@@ -8,6 +8,19 @@
     {
       "name": "voiceover-shorts",
       "source": "./"
+    },
+    {
+      "name": "voiceover-shorts-tts",
+      "source": {
+        "source": "github",
+        "repo": "KellerAI/voiceover-shorts",
+        "ref": "tts-addon"
+      },
+      "description": "Make a narration WAV and word timings (words.json) from text through the ElevenLabs API, using your own ElevenLabs key, for the voiceover-shorts plugin",
+      "author": {
+        "name": "KellerAI",
+        "email": "plugins@kellerai.io"
+      }
     }
   ]
 }
