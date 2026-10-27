@@ -19,11 +19,10 @@ You need `python3` and `ffprobe` on your `PATH`. The MCP server uses only the Py
 Install the add-on from the repository marketplace.
 
 ```bash
-/plugin marketplace add KellerAI/voiceover-shorts
-/plugin install voiceover-shorts-tts
+/plugin install voiceover-shorts-tts --marketplace KellerAI/voiceover-shorts
 ```
 
-TODO: verify the exact install command once the marketplace entry for `voiceover-shorts-tts` is published.
+From a shell: `claude plugin install voiceover-shorts-tts --marketplace KellerAI/voiceover-shorts`.
 
 ## Setup
 
