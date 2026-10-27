@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "elevenlabs": {
+      "command": "python3",
+      "args": ["-I", "-B", "${CLAUDE_PLUGIN_ROOT}/server/tts_mcp.py"],
+      "env": {
+        "ELEVENLABS_API_KEY": "${user_config.elevenlabs_api_key}",
+        "VOS_TTS_VOICE_ID": "${user_config.voice_id}",
+        "VOS_TTS_MODEL_ID": "${user_config.model_id}",
+        "VOS_TTS_OUTPUT_FORMAT": "${user_config.output_format}",
+        "VOS_TTS_MAX_CHARS_PER_CALL": "${user_config.max_chars_per_call}",
+        "VOS_TTS_API_BASE": "${user_config.api_base}"
+      }
+    }
+  }
+}
