@@ -12,6 +12,7 @@ String matching only. Nothing here opens, fetches or requests the link.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -22,6 +23,11 @@ THIS_FILE = Path(__file__).resolve()
 AFFILIATE_URL = "https://try.elevenlabs.io/vbrajywhn5js"
 DISCLOSURE = "Paid link: KellerAI is an independent affiliate of ElevenLabs and may earn a commission."
 LISTING_DIR = ".claude-plugin"
+# Matches the link by host+path, with or without http(s):// and www., case-insensitive host.
+# Regex-escaped copies (`try\.elevenlabs\.io`) in eval graders are not literal links and do not match.
+AFFILIATE_RE = re.compile(
+    r"(?<![\w.\\/-])(?i:(?:https?://)?(?:www\.)?try\.elevenlabs\.io)/vbrajywhn5js(?![\w-])"
+)
 
 
 def frontmatter_line_count(lines: list[str]) -> int:
@@ -42,7 +48,7 @@ def check_text(rel: str, text: str) -> list[str]:
     in_listing_dir = LISTING_DIR in rel_parts
     fm_end = frontmatter_line_count(lines) if Path(rel).name == "SKILL.md" else 0
     for i, line in enumerate(lines):
-        if AFFILIATE_URL not in line:
+        if not AFFILIATE_RE.search(line):
             continue
         lineno = i + 1
         if in_listing_dir:
@@ -140,6 +146,25 @@ def test_planted_link_without_disclosure_is_flagged(tmp_path: Path) -> None:
     assert find_violations([f], tmp_path) == [
         "docs/a.md:2: affiliate link not followed on the next line by the disclosure"
     ]
+
+
+def test_planted_schemeless_link_without_disclosure_is_flagged(tmp_path: Path) -> None:
+    f = write(tmp_path, "docs/e.md", "Sign up: try.elevenlabs.io/vbrajywhn5js\nThanks.\n")
+    assert find_violations([f], tmp_path) == [
+        "docs/e.md:1: affiliate link not followed on the next line by the disclosure"
+    ]
+
+
+def test_planted_http_link_without_disclosure_is_flagged(tmp_path: Path) -> None:
+    f = write(tmp_path, "docs/f.md", "Sign up: http://WWW.Try.ElevenLabs.io/vbrajywhn5js\nOk.\n")
+    assert find_violations([f], tmp_path) == [
+        "docs/f.md:1: affiliate link not followed on the next line by the disclosure"
+    ]
+
+
+def test_regex_escaped_grader_pattern_is_not_a_link(tmp_path: Path) -> None:
+    f = write(tmp_path, "evals/g.py", 'PATTERN = r"try\\.elevenlabs\\.io/vbrajywhn5js"\n')
+    assert find_violations([f], tmp_path) == []
 
 
 def test_planted_link_on_last_line_is_flagged(tmp_path: Path) -> None:
