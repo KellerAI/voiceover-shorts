@@ -16,7 +16,7 @@ The core plugin works only on your machine and makes no calls to the internet.
   `calibration.json`). Cuts and renders go to output directories you choose, outside the plugin.
 - None of this data leaves your machine unless you send it somewhere yourself.
 
-Tools you install separately, such as HyperFrames and Playwright, have their own terms.
+Tools you install separately, such as HyperFrames and agent-browser, have their own terms.
 
 ## voiceover-shorts-tts (add-on)
 
