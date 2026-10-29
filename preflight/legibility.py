@@ -6,15 +6,16 @@ Usage:
   legibility.py COMPOSITION.html [--at T1,T2,...] [--samples N] [--json]
 
 Options: --min-px PX (default 44, at a 1080 px wide canvas; scaled by canvas width),
---opacity-floor A (default 0.2), --browser EXE (Chromium executable; default Playwright's),
---hyperframes-dist DIR (hyperframes dist/ with compiler-*.js; default: the npx cache entry
-for hyperframes@0.8.183), --no-bundle (serve the HTML raw), --timeout-ms MS.
+--opacity-floor A (default 0.2), --browser EXE (Chrome/Chromium executable; default
+agent-browser's), --hyperframes-dist DIR (hyperframes dist/ with compiler-*.js; default: the
+npx cache entry for hyperframes@0.8.183), --no-bundle (serve the HTML raw), --timeout-ms MS.
 
 How it measures: a project dir is bundled with hyperframes' own compiler (bundleToSingleHtml,
 the same step `render`/`inspect` run) so the hyperframes runtime controls clip visibility. The
-page is served from 127.0.0.1 and loaded in headless Chromium via Playwright; requests to any
-other host are aborted. At each sample time the page is seeked with the same call chain
-hyperframes uses (__player.renderSeek, __hf.seek, __player.seek, __timelines pause+seek, then
+page is served from 127.0.0.1 and loaded in headless Chrome through the agent-browser CLI
+(Vercel; `agent-browser` on PATH), in a private session that is closed afterwards; requests to
+any other host are blocked (--allowed-domains). At each sample time the page is seeked with
+the same call chain hyperframes uses (__player.renderSeek, __hf.seek, __player.seek, __timelines pause+seek, then
 gsap.ticker.tick) and every visible text run and media box is read from the DOM.
 
 Rules, per sample time:
@@ -39,10 +40,12 @@ import contextlib
 import functools
 import http.server
 import json
+import os
 import shutil
 import subprocess
 import sys
 import threading
+import uuid
 from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import urlsplit
@@ -59,6 +62,10 @@ MIN_BAND_HIT_FRAC = (
 HYPERFRAMES_VERSION = "0.8.183"
 BUNDLE_PATH = "/__legibility_bundle.html"
 MAX_EXAMPLES = 5
+LOCAL_HOSTS = ("127.0.0.1", "localhost")
+# Safety net: if close is never reached (killed process), the agent-browser daemon exits itself.
+BROWSER_IDLE_TIMEOUT = "2m"
+DEFAULT_EXECUTABLE = "agent-browser-default"
 
 Json = dict[str, Any]
 
@@ -113,6 +120,20 @@ INFO_JS = """
   if (!d && window.__timelines) for (const tl of Object.values(window.__timelines)) {
     const td = num(tl && tl.duration); if (td > 0) { d = td; break; } }
   return { width: w > 0 ? w : null, height: h > 0 ? h : null, duration: d };
+}
+"""
+
+# Full browser version (e.g. 156.0.8078.49); the UA string only carries the major version.
+VERSION_JS = """
+async () => {
+  const ua = navigator.userAgentData;
+  if (ua && typeof ua.getHighEntropyValues === "function") {
+    const v = await ua.getHighEntropyValues(["fullVersionList"]);
+    const c = (v.fullVersionList || []).find((b) => b.brand === "Chromium");
+    if (c) return c.version;
+  }
+  const m = navigator.userAgent.match(/(?:HeadlessChrome|Chrome)\\/([0-9.]+)/);
+  return m ? m[1] : navigator.userAgent;
 }
 """
 
@@ -433,6 +454,81 @@ def serve(root: Path, bundle: bytes | None) -> Iterator[str]:
         srv.server_close()
 
 
+class BrowserError(LegibilityError):
+    """An agent-browser command failed (non-zero exit or success: false)."""
+
+
+class AgentBrowser:
+    """One private agent-browser session (headless Chrome); each call is one CLI command.
+
+    The session name is unique per instance, so the machine-wide default session is never touched.
+    Every command but close repeats the same launch flags, so the session never relaunches with
+    other ones.
+    """
+
+    def __init__(self, exe: str, browser_exe: str | None, timeout_ms: int) -> None:
+        self.timeout_ms = timeout_ms
+        self.session = [exe, "--session", f"legibility-{uuid.uuid4().hex[:12]}"]
+        self.base = [
+            *self.session,
+            "--allowed-domains",
+            ",".join(LOCAL_HOSTS),
+            "--headed",
+            "false",
+            "--idle-timeout",
+            BROWSER_IDLE_TIMEOUT,
+            "--json",
+        ]
+        if browser_exe:
+            self.base += ["--executable-path", browser_exe]
+        self.env = {**os.environ, "AGENT_BROWSER_DEFAULT_TIMEOUT": str(timeout_ms)}
+
+    def run(
+        self, *args: str, stdin: str | None = None, launch_flags: bool = True
+    ) -> Json:
+        """Run one command; return its `data` object, or raise BrowserError."""
+        cmd = [*self.base, *args] if launch_flags else [*self.session, "--json", *args]
+        try:
+            r = subprocess.run(
+                cmd,
+                input=stdin,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=self.env,
+                timeout=self.timeout_ms / 1000 + 60,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise BrowserError(f"browser error: agent-browser {args[0]} hung") from e
+        try:
+            out = json.loads(r.stdout)
+        except ValueError:
+            out = None
+        if isinstance(out, dict) and out.get("success"):
+            data = out.get("data")
+            return data if isinstance(data, dict) else {}
+        msg = out.get("error") if isinstance(out, dict) else None
+        msg = str(msg or r.stderr.strip() or r.stdout.strip() or f"exit {r.returncode}")
+        raise BrowserError(
+            f"browser error: agent-browser {args[0]}: {msg.splitlines()[0]}"
+        )
+
+    def run_js(self, js: str, *args: Any) -> Any:
+        """Evaluate the function source `js` with JSON-encoded `args`; promises are awaited."""
+        call = f"({js.strip()})({', '.join(json.dumps(a) for a in args)})"
+        return self.run("eval", "--stdin", stdin=call).get("result")
+
+    def goto(self, url: str) -> None:
+        self.run("open", url)
+        self.run("wait", "--load", "load", "--timeout", str(self.timeout_ms))
+
+    def close(self) -> None:
+        # Without launch flags: with them, close relaunches a browser that failed to launch
+        # (bad --browser path) and fails, leaving the session daemon running.
+        with contextlib.suppress(LegibilityError, OSError):
+            self.run("close", launch_flags=False)
+
+
 def measure(
     url: str,
     samples: int,
@@ -441,81 +537,67 @@ def measure(
     browser_exe: str | None,
     timeout_ms: int,
 ) -> Json:
-    """Load `url` in headless Chromium, seek to each sample time, return raw DOM measurements."""
+    """Load `url` in headless Chrome, seek to each sample time, return raw DOM measurements."""
+    exe = shutil.which("agent-browser")
+    if not exe:
+        raise LegibilityError(
+            "agent-browser not found on PATH "
+            "(install: npm install -g agent-browser && agent-browser install)"
+        )
+    b = AgentBrowser(exe, browser_exe, timeout_ms)
     try:
-        from playwright.sync_api import Error as PwError
-        from playwright.sync_api import sync_playwright
-    except ImportError as e:
-        raise LegibilityError("python package 'playwright' is not installed") from e
-    blocked: list[str] = []
-
-    def route(r: Any) -> None:
-        host = urlsplit(r.request.url).hostname
-        if host in ("127.0.0.1", "localhost"):
-            r.continue_()
-        else:
-            blocked.append(r.request.url)
-            r.abort()
-
-    try:
-        with sync_playwright() as p:
-            browser = (
-                p.chromium.launch(executable_path=browser_exe)
-                if browser_exe
-                else p.chromium.launch()
+        # Launch on about:blank, so the viewport is set before the first load.
+        b.run("open")
+        b.run("set", "viewport", str(REF_WIDTH), "1920")
+        b.goto(url)
+        info = b.run_js(INFO_JS)
+        if not info["width"] or not info["height"]:
+            raise LegibilityError(
+                "no [data-composition-id][data-width][data-height] root in the composition"
             )
+        if (info["width"], info["height"]) != (REF_WIDTH, 1920):
+            b.run("set", "viewport", str(info["width"]), str(info["height"]))
+            b.goto(url)
+        if expect_runtime:
             try:
-                page = browser.new_page(viewport={"width": REF_WIDTH, "height": 1920})
-                page.route("**/*", route)
-                errors: list[str] = []
-                page.on("pageerror", lambda e: errors.append(str(e)))
-                page.goto(url, wait_until="load", timeout=timeout_ms)
-                info = page.evaluate(INFO_JS)
-                if not info["width"] or not info["height"]:
-                    raise LegibilityError(
-                        "no [data-composition-id][data-width][data-height] root in the composition"
-                    )
-                if (info["width"], info["height"]) != (REF_WIDTH, 1920):
-                    page.set_viewport_size(
-                        {"width": info["width"], "height": info["height"]}
-                    )
-                    page.goto(url, wait_until="load", timeout=timeout_ms)
-                if expect_runtime:
-                    try:
-                        page.wait_for_function(
-                            "() => Boolean(window.__renderReady) || typeof window.__hfStartupError === 'string'",
-                            timeout=timeout_ms,
-                        )
-                    except PwError as e:
-                        raise LegibilityError(
-                            f"hyperframes runtime not ready within {timeout_ms} ms"
-                        ) from e
-                    err = page.evaluate("() => window.__hfStartupError")
-                    if isinstance(err, str):
-                        raise LegibilityError(
-                            f"hyperframes runtime startup error: {err}"
-                        )
-                page.evaluate(
-                    "() => document.fonts ? document.fonts.ready.then(() => true) : true"
+                b.run(
+                    "wait",
+                    "--fn",
+                    "Boolean(window.__renderReady) || typeof window.__hfStartupError === 'string'",
+                    "--timeout",
+                    str(timeout_ms),
                 )
-                info = page.evaluate(INFO_JS)
-                ts = sample_times(float(info["duration"] or 0), samples, at)
-                raw = []
-                for t in ts:
-                    page.evaluate(SEEK_JS, t)
-                    m = page.evaluate(MEASURE_JS)
-                    raw.append({"t": t, "texts": m["texts"], "boxes": m["boxes"]})
-                return {
-                    "info": info,
-                    "raw": raw,
-                    "browser": browser.version,
-                    "blocked_requests": blocked,
-                    "page_errors": errors,
-                }
-            finally:
-                browser.close()
-    except PwError as e:
-        raise LegibilityError(f"browser error: {str(e).strip().splitlines()[0]}") from e
+            except BrowserError as e:
+                raise LegibilityError(
+                    f"hyperframes runtime not ready within {timeout_ms} ms"
+                ) from e
+            err = b.run_js("() => window.__hfStartupError")
+            if isinstance(err, str):
+                raise LegibilityError(f"hyperframes runtime startup error: {err}")
+        b.run_js("() => document.fonts ? document.fonts.ready.then(() => true) : true")
+        info = b.run_js(INFO_JS)
+        ts = sample_times(float(info["duration"] or 0), samples, at)
+        raw = []
+        for t in ts:
+            b.run_js(SEEK_JS, t)
+            m = b.run_js(MEASURE_JS)
+            raw.append({"t": t, "texts": m["texts"], "boxes": m["boxes"]})
+        errors = [str(e.get("text", e)) for e in b.run("errors").get("errors", [])]
+        blocked = [
+            q["url"]
+            for q in b.run("network", "requests").get("requests", [])
+            if urlsplit(q.get("url", "")).scheme in ("http", "https", "ws", "wss")
+            and urlsplit(q["url"]).hostname not in LOCAL_HOSTS
+        ]
+        return {
+            "info": info,
+            "raw": raw,
+            "browser": b.run_js(VERSION_JS),
+            "blocked_requests": blocked,
+            "page_errors": errors,
+        }
+    finally:
+        b.close()
 
 
 def check(
@@ -573,7 +655,7 @@ def check(
             "bundled": bundled,
             "hyperframes_dist": dist_used,
             "browser": m["browser"],
-            "browser_executable": browser or "playwright-default",
+            "browser_executable": browser or DEFAULT_EXECUTABLE,
             "blocked_requests": len(m["blocked_requests"]),
             "page_errors": m["page_errors"][:5],
         }
@@ -619,7 +701,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--opacity-floor", type=float, default=DEFAULT_OPACITY_FLOOR)
     ap.add_argument(
-        "--browser", help="Chromium executable (default: Playwright's bundled build)"
+        "--browser",
+        help="Chrome/Chromium executable (default: the one agent-browser installed)",
     )
     ap.add_argument(
         "--hyperframes-dist", help="hyperframes dist/ dir holding compiler-*.js"

@@ -1,7 +1,7 @@
 """Tests for preflight/legibility.py (item 6).
 
-The CLI and check() tests drive a real headless Chromium (Playwright) against HTML fixtures written
-to tmp_path; nothing in the browser path is mocked. The helper tests at the bottom are browser-free
+The CLI and check() tests drive a real headless Chrome (agent-browser CLI) against HTML fixtures
+written to tmp_path; nothing in the browser path is mocked. The helper tests at the bottom are browser-free
 unit isolation of the pure classification code; they supplement the real-path tests.
 """
 
