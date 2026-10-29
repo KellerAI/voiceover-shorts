@@ -9,6 +9,8 @@
   },
   "homepage": "https://github.com/KellerAI/voiceover-shorts",
   "repository": "https://github.com/KellerAI/voiceover-shorts",
+  "privacyPolicyUrl": "https://github.com/KellerAI/voiceover-shorts/blob/main/PRIVACY.md",
+  "supportUrl": "https://github.com/KellerAI/voiceover-shorts/issues",
   "license": "LicenseRef-MIT-NoTraining",
   "keywords": ["voiceover", "shorts", "text-to-speech", "tts", "elevenlabs", "narration", "word timings"],
   "userConfig": {
