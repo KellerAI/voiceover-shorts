@@ -245,34 +245,43 @@ def test_planted_unparseable_copy_is_flagged(tmp_path: Path) -> None:
 # ------------------------------------------------------------------ end to end
 
 
-def _launch_env(entry: dict[str, Any], options: dict[str, Any], data_dir: Path) -> dict[str, str]:
+def _launch_env(
+    entry: dict[str, Any], options: dict[str, Any], data_dir: Path, *, keep_placeholders: bool = False
+) -> dict[str, str]:
     """The env Claude Code would give the server with no key saved.
 
     Built from scratch (never os.environ, so no real key can leak in). An option with a default is
-    substituted with it; one without (the key, the voice) stays the literal placeholder, which the
-    server treats as unset. CLAUDE_PLUGIN_ROOT/DATA are exported to MCP stdio servers per the docs.
+    substituted with it; one without (the key, the voice) becomes "" (what the Claude Code loader
+    sends, observed), or stays the literal placeholder when `keep_placeholders` models a loader that
+    does no substitution. The server treats both as unset. CLAUDE_PLUGIN_ROOT/DATA are exported to
+    MCP stdio servers per the docs.
     """
 
     def substitute(value: str) -> str:
         def one(match: re.Match[str]) -> str:
             option = options[match.group(1)]
-            return str(option["default"]) if "default" in option else match.group(0)
+            if "default" in option:
+                return str(option["default"])
+            return match.group(0) if keep_placeholders else ""
 
         return USER_CONFIG_REF.sub(one, value.replace(ROOT_VAR, str(ROOT)))
 
     env = {name: substitute(value) for name, value in entry["env"].items()}
-    assert env[KEY_ENV].startswith("${user_config."), "the key must reach the server unset in this test"
+    expected = env[KEY_ENV].startswith("${user_config.") if keep_placeholders else env[KEY_ENV] == ""
+    assert expected, "the key must reach the server unset in this test"
     env.update(PATH=os.environ.get("PATH", os.defpath), CLAUDE_PLUGIN_ROOT=str(ROOT),
                CLAUDE_PLUGIN_DATA=str(data_dir))
     return env
 
 
-def test_server_launches_as_declared_and_lists_three_tools(tmp_path: Path) -> None:
+@pytest.mark.parametrize("keep_placeholders", [False, True], ids=["empty-options", "literal-placeholders"])
+def test_server_launches_as_declared_and_lists_three_tools(tmp_path: Path, keep_placeholders: bool) -> None:
     entry = _entry(load_json(MCP_JSON))
     exe = shutil.which(entry["command"])
     assert exe is not None, f"{entry['command']} is not on PATH"
     argv = [exe, *(a.replace(ROOT_VAR, str(ROOT)) for a in entry["args"])]
-    env = _launch_env(entry, load_json(PLUGIN_JSON)["userConfig"], tmp_path / "data")
+    env = _launch_env(entry, load_json(PLUGIN_JSON)["userConfig"], tmp_path / "data",
+                      keep_placeholders=keep_placeholders)
     messages = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize",
          "params": {"protocolVersion": LEGACY, "capabilities": {}, "clientInfo": {"name": "pytest", "version": "0"}}},
@@ -289,3 +298,81 @@ def test_server_launches_as_declared_and_lists_three_tools(tmp_path: Path) -> No
     assert init["protocolVersion"] == LEGACY
     assert "tools" in init["capabilities"]
     assert [t["name"] for t in listed["tools"]] == TOOL_NAMES
+
+
+# ------------------------------------------------------------------ unsubstituted placeholders
+
+
+def _modules() -> tuple[Any, Any]:
+    """tts_mcp (which puts scripts/ on sys.path) and narrate, imported from this checkout."""
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location("tts_mcp_under_test", SERVER_SOURCE)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses resolves annotations through sys.modules
+    spec.loader.exec_module(module)
+    return module, module.narrate
+
+
+FAKE_KEY = "sk_test_not_a_real_key_0123456789"
+PLACEHOLDER_ENV = {
+    KEY_ENV: "${user_config.elevenlabs_api_key}",
+    "VOS_TTS_VOICE_ID": "${user_config.voice_id}",
+    "VOS_TTS_MODEL_ID": "${user_config.model_id}",
+    "VOS_TTS_OUTPUT_FORMAT": "${user_config.output_format}",
+    "VOS_TTS_MAX_CHARS_PER_CALL": "${user_config.max_chars_per_call}",
+    "VOS_TTS_API_BASE": "${user_config.api_base}",
+    "CLAUDE_PLUGIN_ROOT": ROOT_VAR,
+    "CLAUDE_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
+}
+
+
+def test_unsubstituted_placeholders_count_as_unset() -> None:
+    tts_mcp, narrate = _modules()
+    cfg = tts_mcp.load_config(PLACEHOLDER_ENV)
+    assert cfg.key is None
+    assert not narrate.key_configured(PLACEHOLDER_ENV[KEY_ENV])
+    assert not narrate.key_configured(ROOT_VAR)  # any ${...}, not only ${user_config.*}
+    assert cfg.voice_id is None and cfg.plugin_root is None and cfg.plugin_data is None
+    assert cfg.model_id == narrate.DEFAULT_MODEL_ID
+    assert cfg.output_format == narrate.DEFAULT_OUTPUT_FORMAT
+    assert cfg.max_chars == narrate.DEFAULT_MAX_CHARS_PER_CALL
+    assert cfg.api_base == narrate.DEFAULT_API_BASE
+
+
+def test_real_values_are_still_used(tmp_path: Path) -> None:
+    tts_mcp, narrate = _modules()
+    env = {KEY_ENV: FAKE_KEY, "VOS_TTS_VOICE_ID": "voice$1", "VOS_TTS_MODEL_ID": "eleven_turbo_v2",
+           "VOS_TTS_MAX_CHARS_PER_CALL": "900", "CLAUDE_PLUGIN_ROOT": str(tmp_path / "root"),
+           "CLAUDE_PLUGIN_DATA": str(tmp_path / "data")}
+    cfg = tts_mcp.load_config(env)
+    assert cfg.key == FAKE_KEY and narrate.key_configured(FAKE_KEY)
+    assert cfg.voice_id == "voice$1"  # a `$` that does not open a placeholder is a real value
+    assert cfg.model_id == "eleven_turbo_v2" and cfg.max_chars == 900
+    assert cfg.plugin_root == str(tmp_path / "root") and cfg.plugin_data == str(tmp_path / "data")
+
+
+def test_exported_key_is_the_fallback_when_no_placeholder_overrides_it() -> None:
+    """A loader that ignores .mcp.json `env` passes the user's exported key through unchanged."""
+    tts_mcp, _ = _modules()
+    assert tts_mcp.load_config({KEY_ENV: FAKE_KEY}).key == FAKE_KEY
+    assert tts_mcp.load_config({KEY_ENV: "  "}).key is None
+    assert tts_mcp.load_config({KEY_ENV: "${ELEVENLABS_API_KEY}"}).key is None
+
+
+def test_placeholder_plugin_root_falls_back_to_the_addon_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, narrate = _modules()
+    monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", ROOT_VAR)
+    monkeypatch.chdir(tmp_path)  # a literal "${CLAUDE_PLUGIN_ROOT}" would resolve under cwd
+    kwargs = {"text": "hi", "name": "n", "confirm_spend": True, "max_chars": 10, "user_ceiling": 100,
+              "voice_id": "v", "plugin_root": None}
+    with pytest.raises(narrate.Refused, match="inside the plugin directory"):
+        narrate.synthesize(None, out_dir=str(ROOT / "out"), **kwargs)
+    # Past the path check, a missing ffprobe refuses before any client use, so nothing is sent.
+    monkeypatch.setattr(narrate.shutil, "which", lambda _name: None)
+    with pytest.raises(narrate.Refused, match="ffprobe"):
+        narrate.synthesize(None, out_dir=str(tmp_path / ROOT_VAR / "out"), **kwargs)
