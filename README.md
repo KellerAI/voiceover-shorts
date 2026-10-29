@@ -64,6 +64,21 @@ Writes (`collect`, `seed`, `ingest`) fail closed with exit 2 when `CLAUDE_PLUGIN
 Pass `--store PATH` (and `--out PATH` for `ingest`) to `feedback.py` to keep them elsewhere.
 Reads use the user file when it exists, else the shipped seed.
 
+## What it runs, sends and fetches
+
+This section lists every external process, network path and write location the plugin uses.
+
+| Item | What happens |
+| --- | --- |
+| ffmpeg, ffprobe | Run as subprocesses by `preflight/dead_frames.py`, `preflight/loudness.py`, `preflight/endcard.py`, `evidence/evidence.py` and `styles/*/build.py`. You install them; they must be on `PATH`. |
+| HyperFrames render | `npx hyperframes@0.8.183 render` runs under `sandbox-exec -f kit/offline.sb` with `npm_config_offline=true` (`styles/*/build.py`, `workflows/lookdev.js`). The profile denies all outbound network except localhost, so a render never fetches from registry.npmjs.org. The package must already be in the npx cache: run `npx hyperframes@0.8.183 --help` once outside the sandbox, which downloads it from the npm registry. |
+| Legibility preflight | `preflight/legibility.py` serves the page on 127.0.0.1 and loads it in headless Chrome through the `agent-browser` CLI, with `--allowed-domains 127.0.0.1,localhost` so requests to other hosts are blocked. You install `agent-browser` (`npm install -g agent-browser && agent-browser install`). |
+| Claude subagents | `workflows/lookdev.js` calls `agent()` to build, gate and critique renders. These calls run through your own Claude session and account. |
+| Credentials | None. The plugin reads no API keys or tokens. |
+| Telemetry | None. See `PRIVACY.md`. |
+| Writes | Feedback goes under `${CLAUDE_PLUGIN_DATA}/feedback/`; renders go to the `outRoot` you pass, such as `${CLAUDE_PLUGIN_DATA}/lookdev-v2`. Both refuse targets inside the plugin root. |
+| Vendored GSAP | `kit/vendor/gsap.js` (readable source) and `kit/vendor/gsap.min.js`, gsap@3.14.2, unmodified from the npm package (<https://www.npmjs.com/package/gsap/v/3.14.2>). See `NOTICE`. |
+
 ## Plugin components
 
 The plugin ships one skill, `skills/shorts-studio/`, which triggers on intent and drives the workflow.

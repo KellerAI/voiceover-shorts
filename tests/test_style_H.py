@@ -9,7 +9,7 @@ one pytest session when index.html, the audio and the kit end card are unchanged
 Style H draws everything on one <canvas>, which the DOM-based legibility preflight cannot see
 into (it reports the lower third as "indeterminate", not as a finding). Two extra checks close
 that gap: the canvas records the size of every text run it draws (window.__hText, read here in
-headless Chromium over the full timeline at 10 fps), and the lower band of the rendered frames
+headless Chrome (agent-browser) over the full timeline at 10 fps), and the lower band of the rendered frames
 is measured for ink. Each has a planted negative.
 """
 import functools
@@ -218,23 +218,25 @@ SCAN_JS = """async ([dur, step]) => {
 
 
 def canvas_text_scan(project):
-    from playwright.sync_api import sync_playwright
+    """Scan the canvas text record over the timeline in headless Chrome via agent-browser."""
+    import shutil
+
+    from preflight.legibility import AgentBrowser
+    exe = shutil.which("agent-browser")
+    assert exe, "agent-browser not found on PATH (npm install -g agent-browser && agent-browser install)"
     srv = _serve(project)
+    b = AgentBrowser(exe, None, 20000)  # private session; non-local hosts blocked (--allowed-domains)
     try:
-        with sync_playwright() as pw:
-            b = pw.chromium.launch()
-            pg = b.new_page(viewport={"width": 1080, "height": 1920})
-            errors = []
-            pg.on("pageerror", lambda e: errors.append(str(e)))
-            pg.route("**/*", lambda route: route.continue_() if route.request.url.startswith(f"http://127.0.0.1:{PORT}/")
-                     else route.abort())
-            pg.goto(f"http://127.0.0.1:{PORT}/index.html")
-            pg.wait_for_function("!!(window.__timelines && window.__timelines.main)", timeout=20000)
-            dur = float(pg.evaluate("parseFloat(document.getElementById('root').getAttribute('data-duration'))"))
-            rows = pg.evaluate(SCAN_JS, [dur, 0.1])
-            fonts = pg.evaluate("[...document.fonts].filter(f => f.status === 'loaded').map(f => f.family)")
-            b.close()
+        b.run("open")
+        b.run("set", "viewport", "1080", "1920")
+        b.goto(f"http://127.0.0.1:{PORT}/index.html")
+        b.run("wait", "--fn", "!!(window.__timelines && window.__timelines.main)", "--timeout", "20000")
+        dur = float(b.run_js("() => parseFloat(document.getElementById('root').getAttribute('data-duration'))"))
+        rows = b.run_js(SCAN_JS, [dur, 0.1])
+        fonts = b.run_js("() => [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family)")
+        errors = [str(e.get("text", e)) for e in b.run("errors").get("errors", [])]
     finally:
+        b.close()
         srv.shutdown()
         srv.server_close()
     return rows, errors, fonts
