@@ -7,10 +7,12 @@ its own license, as stated below; the KellerAI license does not apply to them.
 -------------------------------------------------------------------------------
 GSAP (GreenSock Animation Platform) 3.14.2
 -------------------------------------------------------------------------------
-Vendored at kit/vendor/gsap.min.js, redistributed unmodified under the
-GSAP Standard License (https://gsap.com/standard-license).
-Copyright 2025, GreenSock. All rights reserved.
-The file's original license header is kept intact.
+Vendored at kit/vendor/gsap.min.js and kit/vendor/gsap.js (the readable
+source of the min build, npm dist/gsap.js), redistributed unmodified under
+the GSAP Standard "No Charge" License (https://gsap.com/standard-license).
+Copyright 2008-2025 GreenSock. All rights reserved.
+The files' original license headers are kept intact.
+npm integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==
 
 -------------------------------------------------------------------------------
 Comic Shanns (kit/fonts/)
