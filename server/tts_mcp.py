@@ -173,9 +173,7 @@ def _is_int(value: object) -> bool:
 
 def _setting(env: Mapping[str, str], name: str) -> str | None:
     value = env.get(name, "").strip()
-    if not value or value.startswith("${"):
-        return None
-    return value
+    return None if narrate.is_placeholder(value) else value
 
 
 def _ceiling(raw: str | None) -> int | str:

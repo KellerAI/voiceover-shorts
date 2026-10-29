@@ -85,9 +85,14 @@ class PossiblyBilled(NarrateError):
     """The paid POST was sent; the request may have been billed."""
 
 
+def is_placeholder(value: str | None) -> bool:
+    """True for an unset or empty value, or one still holding an unsubstituted ${...} placeholder."""
+    return not value or not str(value).strip() or str(value).strip().startswith("${")
+
+
 def key_configured(key: str | None) -> bool:
-    """False for an unset key, an empty one, or an unsubstituted ${user_config.*} placeholder."""
-    return bool(key) and not str(key).startswith("${user_config.")
+    """False for an unset key, an empty one, or an unsubstituted ${...} placeholder."""
+    return not is_placeholder(key)
 
 
 def _whole_number(value: object) -> int | None:
@@ -232,7 +237,8 @@ def synthesize(
     if output_format not in OUTPUT_FORMATS:
         raise Refused(f"output_format must be one of {', '.join(OUTPUT_FORMATS)} (got {output_format!r})")
     if plugin_root is None:
-        plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or None
+        env_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+        plugin_root = None if is_placeholder(env_root) else env_root  # ADDON_ROOT is always checked
     alignment_path, wav_path, words_path = _output_paths(out_dir, name, plugin_root)
     ffprobe = shutil.which("ffprobe")
     if ffprobe is None:
@@ -357,7 +363,7 @@ def _run(a: argparse.Namespace, key: str | None, ap: argparse.ArgumentParser) ->
     out_dir: str | None = a.out_dir
     if out_dir is None:
         data = os.environ.get("CLAUDE_PLUGIN_DATA")
-        if not data:
+        if data is None or is_placeholder(data):
             ap.error("--out-dir is required when CLAUDE_PLUGIN_DATA is not set")
         out_dir = os.path.join(data, "narration")
     if key is None or not key_configured(key):
