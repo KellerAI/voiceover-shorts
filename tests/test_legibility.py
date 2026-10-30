@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -105,6 +106,21 @@ SMALL_CANVAS = page(
     w=720,
     h=1280,
 )
+
+# An otherwise passing composition that reaches off-box: an <img> and a fetch to example.com. The
+# fetch writes its outcome into the DOM, so the measured text shows whether the request got out.
+EXTERNAL_URL = "https://example.com/legibility-planted-probe.png"
+EXTERNAL_REQUEST = page(f"""
+<div class="abs" style="top:300px;font-size:96px">Big headline</div>
+<img class="abs" style="top:600px;width:200px;height:200px" src="{EXTERNAL_URL}">
+<div id="probe" class="abs" style="top:900px;font-size:64px">probe pending</div>
+<div class="abs" style="top:1500px;font-size:64px">Lower words</div>
+<script>
+fetch("{EXTERNAL_URL}?fetch", {{mode: "no-cors"}}).then(
+  () => {{ document.getElementById("probe").textContent = "probe reached"; }},
+  () => {{ document.getElementById("probe").textContent = "probe blocked"; }});
+</script>
+""")
 
 
 def write(tmp_path: Path, name: str, html: str) -> Path:
@@ -272,6 +288,25 @@ def test_non_1080_canvas_scales_threshold(tmp_path: Path) -> None:
     )
     assert [f["kind"] for f in bad["findings"]] == ["small_type"]
     assert "26.0px" in bad["findings"][0]["detail"]
+
+
+def test_external_request_is_blocked_and_reported(tmp_path: Path) -> None:
+    # blocked_requests is the log of off-box requests the page attempted, so the URL in it proves
+    # the attempt; the probe text is what proves the browser refused it ("probe reached" if not).
+    src = write(tmp_path, "external.html", EXTERNAL_REQUEST)
+    with lg.serve(tmp_path, None) as base:
+        m = lg.measure(base + "/" + src.name, 1, [1.0], False, None, 15000)
+    texts = [t["text"] for t in m["raw"][0]["texts"]]
+    assert "probe blocked" in texts and "probe reached" not in texts, texts
+    assert EXTERNAL_URL in m["blocked_requests"], m["blocked_requests"]
+    assert all(
+        urlsplit(u).hostname not in lg.LOCAL_HOSTS for u in m["blocked_requests"]
+    )
+    # check() reports the same log as a count; the page itself still passes the legibility rules.
+    res = lg.check(str(src), at=[1.0])
+    assert_contract(res)
+    assert res["passed"], res["findings"]
+    assert res["metrics"]["blocked_requests"] >= 1
 
 
 # ---------- unit isolation: pure helpers, no browser ----------
