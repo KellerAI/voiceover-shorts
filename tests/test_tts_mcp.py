@@ -728,3 +728,22 @@ def test_short_key_is_redacted_without_breaking_framing(short_key: str) -> None:
     reply = json.loads(line)  # framing intact even when the key collides with a protocol field name
     assert reply["id"] == 7 and reply["jsonrpc"] == "2.0"
     assert reply["error"]["message"] == "bad key ***"
+
+
+@pytest.mark.parametrize("odd_key", ['k"ey\\Q9xLm', "kéy-Zq7Xw-long"])
+def test_key_inside_nested_json_text_is_redacted(odd_key: str) -> None:
+    # Tool results carry the outcome twice: as structuredContent and as json.dumps text.
+    import io
+
+    mod = _load_server_module()
+    out = io.BytesIO()
+    server = mod.Server(mod.load_config({"ELEVENLABS_API_KEY": odd_key}), out)
+    outcome = {"detail": f"echo {odd_key}"}
+    content = [{"type": "text", "text": json.dumps(outcome, ensure_ascii=False)}]
+    server._send({"jsonrpc": "2.0", "id": 1, "result": {"content": content, "structuredContent": outcome}})
+    line = out.getvalue().decode("ascii")
+    reply = json.loads(line)
+    assert odd_key not in json.dumps(reply, ensure_ascii=False)
+    assert json.dumps(odd_key)[1:-1] not in line
+    assert reply["result"]["structuredContent"]["detail"] == "echo ***"
+    assert json.loads(reply["result"]["content"][0]["text"]) == {"detail": "echo ***"}

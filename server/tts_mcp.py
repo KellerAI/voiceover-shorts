@@ -335,7 +335,11 @@ class Server:
         if not key:
             return value
         if isinstance(value, str):
-            return value.replace(key, REDACTED)
+            # A tool result's text is itself JSON (json.dumps of the outcome), so a key with a quote,
+            # backslash or non-ASCII character can sit there in escaped form; redact both spellings.
+            for form in (key, json.dumps(key, ensure_ascii=False)[1:-1], json.dumps(key)[1:-1]):
+                value = value.replace(form, REDACTED)
+            return value
         if isinstance(value, dict):
             return {k: self._redact(v) for k, v in value.items()}
         if isinstance(value, list | tuple):
