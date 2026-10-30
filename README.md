@@ -66,17 +66,19 @@ Reads use the user file when it exists, else the shipped seed.
 
 ## What it runs, sends and fetches
 
-This section lists every external process, network path and write location the plugin uses.
+This section lists the external processes, network paths and write locations the plugin uses.
 
 | Item | What happens |
 | --- | --- |
-| ffmpeg, ffprobe | Run as subprocesses by `preflight/dead_frames.py`, `preflight/loudness.py`, `preflight/endcard.py`, `evidence/evidence.py` and `styles/*/build.py`. You install them; they must be on `PATH`. |
-| HyperFrames render | `npx hyperframes@0.8.183 render` runs under `sandbox-exec -f kit/offline.sb` with `npm_config_offline=true` (`styles/*/build.py`, `workflows/lookdev.js`). The profile denies all outbound network except localhost, so a render never fetches from registry.npmjs.org. The package must already be in the npx cache: run `npx hyperframes@0.8.183 --help` once outside the sandbox, which downloads it from the npm registry. |
-| Legibility preflight | `preflight/legibility.py` serves the page on 127.0.0.1 and loads it in headless Chrome through the `agent-browser` CLI, with `--allowed-domains 127.0.0.1,localhost` so requests to other hosts are blocked. You install `agent-browser` (`npm install -g agent-browser && agent-browser install`). |
+| ffmpeg, ffprobe | Run as subprocesses by `preflight/dead_frames.py`, `preflight/loudness.py`, `preflight/endcard.py`, `evidence/evidence.py`, `scripts/pick_cut.py`, `kit/sfx_bus.py`, `evals/eval_critic.py` and `styles/*/build.py`, and by the agents `workflows/lookdev.js` starts. You install them; they must be on `PATH`. |
+| node | Run unsandboxed as a subprocess by `preflight/legibility.py` (the hyperframes bundler) and by `styles/A/build.py` and `styles/B/build.py` (end-card timing from `kit/endcard.js`). You install it; it must be on `PATH`. |
+| HyperFrames render | `npx hyperframes@0.8.183 render` runs under `sandbox-exec -f kit/offline.sb` with `npm_config_offline=true` (`workflows/lookdev.js`, and `styles/A`, `B`, `C` and `K` `build.py` with `--render`). The other styles' `build.py` only print that command for you to run. The profile denies all outbound network except localhost, so a render never fetches from registry.npmjs.org. The package must already be in the npx cache: run `npx hyperframes@0.8.183 --help` once outside the sandbox, which downloads it from the npm registry. |
+| Legibility preflight | `preflight/legibility.py` serves the page on 127.0.0.1 and loads it in headless Chrome through the `agent-browser` CLI, with `--allowed-domains 127.0.0.1,localhost` so requests to other hosts are blocked. You install `agent-browser` (`npm install -g agent-browser@0.38.1 && agent-browser install`); `agent-browser install` downloads Chrome from Google's Chrome for Testing. agent-browser keeps its own state under `~/.agent-browser`. |
 | Claude subagents | `workflows/lookdev.js` calls `agent()` to build, gate and critique renders. These calls run through your own Claude session and account. |
+| Critic eval | `evals/eval_critic.py` runs `claude -p` as a subprocess, which uses your own Claude account. |
 | Credentials | None. The plugin reads no API keys or tokens. |
 | Telemetry | None. See `PRIVACY.md`. |
-| Writes | Feedback goes under `${CLAUDE_PLUGIN_DATA}/feedback/`; renders go to the `outRoot` you pass, such as `${CLAUDE_PLUGIN_DATA}/lookdev-v2`. Both refuse targets inside the plugin root. |
+| Writes | Feedback goes under `${CLAUDE_PLUGIN_DATA}/feedback/`; renders go to the `outRoot` you pass, such as `${CLAUDE_PLUGIN_DATA}/lookdev-v2`. Both refuse targets inside the plugin root. The command-line tools write only where you point them: `scripts/pick_cut.py` to its `--out-wav`, `--out-words` and `--out-txt` paths (never overwriting), `evidence/evidence.py`, `evals/eval_critic.py` and `styles/*/build.py` to `--out`, `--render` to its mp4 (`styles/A/build.py` writes `styleA.mp4` and `render.log` in `--out`; B, C and K write the mp4 to the `--render` path, B writes `render.log` in `--out`, and C and K write `<name>.render.log` next to the mp4), `review/build_review_page.py` to its `--out` page, and `kit/sfx_bus.py` to `--out-dir`. |
 | Vendored GSAP | `kit/vendor/gsap.js` (readable source) and `kit/vendor/gsap.min.js`, gsap@3.14.2, unmodified from the npm package (<https://www.npmjs.com/package/gsap/v/3.14.2>). See `NOTICE`. |
 
 ## Plugin components

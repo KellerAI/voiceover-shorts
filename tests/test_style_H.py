@@ -221,9 +221,12 @@ def canvas_text_scan(project):
     """Scan the canvas text record over the timeline in headless Chrome via agent-browser."""
     import shutil
 
-    from preflight.legibility import AgentBrowser
+    from preflight.legibility import AGENT_BROWSER_VERSION, AgentBrowser
     exe = shutil.which("agent-browser")
-    assert exe, "agent-browser not found on PATH (npm install -g agent-browser && agent-browser install)"
+    assert exe, (
+        f"agent-browser not found on PATH (npm install -g agent-browser@{AGENT_BROWSER_VERSION} "
+        "&& agent-browser install, which downloads Chrome for Testing)"
+    )
     srv = _serve(project)
     b = AgentBrowser(exe, None, 20000)  # private session; non-local hosts blocked (--allowed-domains)
     try:

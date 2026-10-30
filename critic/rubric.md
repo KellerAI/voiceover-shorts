@@ -114,7 +114,7 @@ Each has a preflight module; a failing module is a must-fix and triggers the pre
 | Slug | Seen in | Preflight module | Fails when |
 | --- | --- | --- | --- |
 | `dead_frames` | 12/12 | `preflight/dead_frames.py` | a black or frozen span lasts at least 0.5 s (`min_dur`). |
-| `small_type` | 11/12 | `preflight/legibility.py`, kind `small_type` | rendered text is under 44 px at 1080 px width (`legibility.py:51-52`). |
+| `small_type` | 11/12 | `preflight/legibility.py`, kind `small_type` | rendered text is under 44 px at 1080 px width (`legibility.py:54-55`). |
 | `end_card` | 10/12 | `preflight/endcard.py` | the card holds under 1.5 s after the last word, cuts to black, or covers the last word. |
 | `empty_lower_frame` | 9/12 | `preflight/legibility.py`, kind `empty_lower_third` | no legible text, media or solid block fills y 1280–1920. |
 | `loudness` | 8/12 | `preflight/loudness.py` | voice is outside -14 ±1 LUFS, true peak exceeds -1.5 dBTP, or SFX peaks less than 12 dB below the voice peak (`loudness.py:23-26`). |

@@ -60,6 +60,7 @@ MIN_BAND_HIT_FRAC = (
     0.0025  # an item must cover >= 0.25% of the band (about 1728 px2 at 1080x1920)
 )
 HYPERFRAMES_VERSION = "0.8.183"
+AGENT_BROWSER_VERSION = "0.38.1"
 BUNDLE_PATH = "/__legibility_bundle.html"
 MAX_EXAMPLES = 5
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
@@ -542,7 +543,8 @@ def measure(
     if not exe:
         raise LegibilityError(
             "agent-browser not found on PATH "
-            "(install: npm install -g agent-browser && agent-browser install)"
+            f"(install: npm install -g agent-browser@{AGENT_BROWSER_VERSION} && agent-browser install; "
+            "`agent-browser install` downloads Chrome from Google's Chrome for Testing)"
         )
     b = AgentBrowser(exe, browser_exe, timeout_ms)
     try:
