@@ -72,7 +72,6 @@ ENV_FORMAT = "VOS_TTS_OUTPUT_FORMAT"
 ENV_MAX_CHARS = "VOS_TTS_MAX_CHARS_PER_CALL"
 ENV_API_BASE = "VOS_TTS_API_BASE"
 ENV_ALLOW_LOOPBACK = "VOS_TTS_TEST_ALLOW_LOOPBACK"
-MIN_REDACT_LEN = 8
 
 SETUP_HINT = "run the tts-setup skill"
 NO_REQUEST = "No request was sent to ElevenLabs."
@@ -326,14 +325,25 @@ class Server:
 
     # ---- output
 
-    def _redact(self, line: str) -> str:
+    def _redact(self, value: Any) -> Any:
+        """Replace any non-empty key in every string value (as el_client does), never in object keys.
+
+        Redacting values before serialization means even a short key cannot rewrite the JSON-RPC
+        framing (a key of "id" leaves the "id" member alone).
+        """
         key = self.cfg.key
-        if key and len(key) >= MIN_REDACT_LEN:
-            line = line.replace(key, REDACTED).replace(json.dumps(key)[1:-1], REDACTED)
-        return line
+        if not key:
+            return value
+        if isinstance(value, str):
+            return value.replace(key, REDACTED)
+        if isinstance(value, dict):
+            return {k: self._redact(v) for k, v in value.items()}
+        if isinstance(value, list | tuple):
+            return [self._redact(v) for v in value]
+        return value
 
     def _send(self, message: dict[str, Any]) -> None:
-        line = self._redact(json.dumps(message, ensure_ascii=True, separators=(",", ":")))
+        line = json.dumps(self._redact(message), ensure_ascii=True, separators=(",", ":"))
         self.out.write(line.encode("ascii") + b"\n")
         self.out.flush()
 

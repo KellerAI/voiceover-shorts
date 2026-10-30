@@ -147,6 +147,7 @@ class ElevenLabsClient:
         voices: list[Any] = []
         seen: set[str] = set()
         token: str | None = None
+        status = 0
         for page_no in range(1, MAX_VOICE_PAGES + 1):
             query = {"page_size": str(VOICE_PAGE_SIZE)}
             if token is not None:
@@ -167,7 +168,7 @@ class ElevenLabsClient:
             if token in seen:
                 raise ElevenLabsError(status, f"GET {path}: page {page_no} repeated an earlier next_page_token")
             seen.add(token)
-        raise ElevenLabsError(None, f"GET {path}: still has_more after {MAX_VOICE_PAGES} pages; stopped")
+        raise ElevenLabsError(status, f"GET {path}: still has_more after {MAX_VOICE_PAGES} pages; stopped")
 
     def tts_with_timestamps(self, voice_id: str, text: str, model_id: str, output_format: str) -> TimestampedSpeech:
         if not voice_id:
