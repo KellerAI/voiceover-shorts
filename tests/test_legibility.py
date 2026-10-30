@@ -291,8 +291,10 @@ def test_non_1080_canvas_scales_threshold(tmp_path: Path) -> None:
 
 
 def test_external_request_is_blocked_and_reported(tmp_path: Path) -> None:
-    # blocked_requests is the log of off-box requests the page attempted, so the URL in it proves
-    # the attempt; the probe text is what proves the browser refused it ("probe reached" if not).
+    # blocked_requests lists off-box requests that reached the network layer: here the <img>.
+    # agent-browser's fetch shim rejects a disallowed fetch before any request is made, so the planted
+    # fetch is NOT in it. The probe text is what shows the fetch was refused ("probe reached" if not).
+    # Without internet access the fetch fails either way, so this half needs a networked machine.
     src = write(tmp_path, "external.html", EXTERNAL_REQUEST)
     with lg.serve(tmp_path, None) as base:
         m = lg.measure(base + "/" + src.name, 1, [1.0], False, None, 15000)
@@ -306,10 +308,19 @@ def test_external_request_is_blocked_and_reported(tmp_path: Path) -> None:
     res = lg.check(str(src), at=[1.0])
     assert_contract(res)
     assert res["passed"], res["findings"]
-    assert res["metrics"]["blocked_requests"] >= 1
+    assert res["metrics"]["blocked_requests"] >= 1  # the <img>; fetch/XHR rejections are not counted
 
 
 # ---------- unit isolation: pure helpers, no browser ----------
+
+
+def test_readme_install_pin_matches_agent_browser_version() -> None:
+    # README.md repeats the pin for humans; this keeps it from drifting from the code's constant.
+    readme = (SCRIPT.parents[1] / "README.md").read_text(encoding="utf-8")
+    assert f"agent-browser@{lg.AGENT_BROWSER_VERSION}" in readme
+    assert readme.count("npm install -g agent-browser") == readme.count(
+        f"npm install -g agent-browser@{lg.AGENT_BROWSER_VERSION}"
+    )
 
 
 def test_scaled_min_px() -> None:

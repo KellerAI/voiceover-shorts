@@ -8,13 +8,16 @@ analytics.
 
 ## voiceover-shorts (core)
 
-The core plugin works only on your machine and makes no calls to the internet.
+The core plugin's own code works only on your machine and makes no calls to the internet. Two parts of it
+run through your own Claude account: the `workflows/lookdev.js` subagents, and `evals/eval_critic.py`, which
+runs `claude -p` and sends it the contact sheets, the rubric and the transcript.
 
 - The legibility preflight serves pages from `127.0.0.1` to a headless browser and aborts requests to any
   other host.
 - Ratings and calibration are written under `${CLAUDE_PLUGIN_DATA}/feedback/` (`ratings.jsonl`,
   `calibration.json`). Cuts and renders go to output directories you choose, outside the plugin.
-- None of this data leaves your machine unless you send it somewhere yourself.
+- Apart from those Claude calls, none of this data leaves your machine unless you send it somewhere
+  yourself.
 
 Tools you install separately, such as HyperFrames and agent-browser, have their own terms.
 
