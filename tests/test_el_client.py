@@ -194,6 +194,7 @@ def test_list_voices_page_cap_bounds_requests(fake: FakeElevenLabs) -> None:
     with pytest.raises(ElevenLabsError) as info:
         _client(fake).list_voices()
     assert str(cap) in info.value.message
+    assert info.value.status == 200
     assert fake.counts == {("GET", "/v2/voices"): cap}
 
 

@@ -703,3 +703,47 @@ def test_401_echoing_the_key_is_redacted(fake: FakeElevenLabs, data_dir: Path, r
         assert KEY not in json.dumps(result)
     assert fake.counts[("POST", f"/v1/text-to-speech/{VOICE}/with-timestamps")] == 0
     # The run_server teardown also asserts the key is absent from all stdout and stderr bytes.
+
+
+def _load_server_module() -> Any:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("tts_mcp_under_test", HERE.parent / "server" / "tts_mcp.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses resolve annotations through sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("short_key", ["Zq7Xw", "id"])
+def test_short_key_is_redacted_without_breaking_framing(short_key: str) -> None:
+    import io
+
+    mod = _load_server_module()
+    out = io.BytesIO()
+    server = mod.Server(mod.load_config({"ELEVENLABS_API_KEY": short_key}), out)
+    server._send({"jsonrpc": "2.0", "id": 7, "error": {"code": -1, "message": f"bad key {short_key}"}})
+    line = out.getvalue().decode("ascii")
+    reply = json.loads(line)  # framing intact even when the key collides with a protocol field name
+    assert reply["id"] == 7 and reply["jsonrpc"] == "2.0"
+    assert reply["error"]["message"] == "bad key ***"
+
+
+@pytest.mark.parametrize("odd_key", ['k"ey\\Q9xLm', "kéy-Zq7Xw-long"])
+def test_key_inside_nested_json_text_is_redacted(odd_key: str) -> None:
+    # Tool results carry the outcome twice: as structuredContent and as json.dumps text.
+    import io
+
+    mod = _load_server_module()
+    out = io.BytesIO()
+    server = mod.Server(mod.load_config({"ELEVENLABS_API_KEY": odd_key}), out)
+    outcome = {"detail": f"echo {odd_key}"}
+    content = [{"type": "text", "text": json.dumps(outcome, ensure_ascii=False)}]
+    server._send({"jsonrpc": "2.0", "id": 1, "result": {"content": content, "structuredContent": outcome}})
+    line = out.getvalue().decode("ascii")
+    reply = json.loads(line)
+    assert odd_key not in json.dumps(reply, ensure_ascii=False)
+    assert json.dumps(odd_key)[1:-1] not in line
+    assert reply["result"]["structuredContent"]["detail"] == "echo ***"
+    assert json.loads(reply["result"]["content"][0]["text"]) == {"detail": "echo ***"}
